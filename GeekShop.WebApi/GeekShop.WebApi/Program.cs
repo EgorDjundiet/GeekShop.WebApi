@@ -1,3 +1,6 @@
+using GeekShop.Repositories;
+using GeekShop.Services;
+
 namespace GeekShop.WebApi
 {
     public class Program
@@ -12,6 +15,10 @@ namespace GeekShop.WebApi
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            
+            //Add my own dependencies
+            builder.Services.AddScoped<IProductService, ProductService>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
             var app = builder.Build();
 
