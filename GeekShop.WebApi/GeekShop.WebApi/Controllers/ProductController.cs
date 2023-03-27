@@ -22,16 +22,19 @@ namespace GeekShop.WebApi.Controllers
         {
             return _productService.GetAll();
         }
+
         [HttpGet("Get")]
-        public Product Get(int id)
+        public Product? Get(int id)
         {
             return _productService.Get(id);
         }
+
         [HttpPut("Add")]
         public void Add(Product product)
         {
             _productService.Add(product);
         }
+
         [HttpDelete("Delete")]
         public void Delete(int id)
         {
