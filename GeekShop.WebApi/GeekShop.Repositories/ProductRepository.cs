@@ -1,61 +1,59 @@
 ﻿using GeekShop.Domain;
 namespace GeekShop.Repositories
 {
-    public interface IProductRepository : ICRUD
+    public interface IProductRepository
     {
-        public static IEnumerable<Product> Products { get; set; }
+        void Add(Product product);
+        IEnumerable<Product> GetAll();
+        Product? Get(int id);
+        void Delete(int id);
     }
     public class ProductRepository : IProductRepository
     {
-        public static IEnumerable<Product> Products
-        {
-            get => products;
-            set => products = value;
-        }
-        private static IEnumerable<Product> products = new List<Product> 
+        private static List<Product> _products = new List<Product> 
         {
             new Product
             {
-                Id = 1,
+                Id = ++IdCounter,
                 Title = "Harry Potter and the Philosopher's Stone",
                 Author = "J.K.Rowling",
                 Description = "The story of the boy who survived"
             },
             new Product
             {
-                Id = 2,
+                Id = ++IdCounter,
                 Title = "War and Peace",
                 Author = "Lev Tolstoy",
                 Description = "The рistorical novel about war and peace"
             },
             new Product
             {
-                Id = 3,
+                Id = ++IdCounter,
                 Title = "The Catcher in the Rye",
                 Author = "J.D.Salinger",
                 Description ="The story of the teen who found a purpose in his life"
             }
         };
-        private static int IdCounter = 3;
+        private static int IdCounter;
         public void Add(Product product)
         {
             product.Id = ++IdCounter;
-            Products = Products.Append(product);
+            _products.Add(product);
         }
 
         public void Delete(int id)
         {
-            Products = Products.Where(p => p.Id != id);
+            _products.Remove(_products.First(p => p.Id == id));
         }
 
-        public Product Get(int id)
+        public Product? Get(int id)
         {
-            return Products.FirstOrDefault(p => p.Id == id, Product.DefaultProduct);
+            return _products.FirstOrDefault(p => p.Id == id);
         }
 
         public IEnumerable<Product> GetAll()
         {
-            return Products;
+            return _products;
         }
     }
 }
