@@ -2,6 +2,7 @@
 using GeekShop.Repositories;
 using GeekShop.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Runtime.CompilerServices;
 
 namespace GeekShop.WebApi.Controllers
 {
@@ -29,7 +30,7 @@ namespace GeekShop.WebApi.Controllers
             return _productService.Get(id);
         }
 
-        [HttpPut("Add")]
+        [HttpPost("Add")]
         public void Add(Product product)
         {
             _productService.Add(product);
