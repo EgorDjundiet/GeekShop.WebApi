@@ -2,7 +2,6 @@
 using GeekShop.Repositories;
 using GeekShop.Services;
 using Microsoft.AspNetCore.Mvc;
-using System.Runtime.CompilerServices;
 
 namespace GeekShop.WebApi.Controllers
 {
@@ -19,27 +18,27 @@ namespace GeekShop.WebApi.Controllers
         }
 
         [HttpGet("GetAll")]
-        public IEnumerable<Product> GetAll()
+        public async Task<IEnumerable<Product>> GetAll()
         {
-            return _productService.GetAll();
+            return await _productService.GetAll();
         }
 
         [HttpGet("Get")]
-        public Product? Get(int id)
+        public async Task<Product?> Get(int id)
         {
-            return _productService.Get(id);
+            return await _productService.Get(id);
         }
 
         [HttpPost("Add")]
-        public void Add(Product product)
+        public async Task Add(Product product)
         {
-            _productService.Add(product);
+            await _productService.Add(product);
         }
 
         [HttpDelete("Delete")]
-        public void Delete(int id)
+        public async Task Delete(int id)
         {
-            _productService.Delete(id);
+            await _productService.Delete(id);
         }       
     }
 }

@@ -3,10 +3,10 @@ namespace GeekShop.Repositories
 {
     public interface IProductRepository
     {
-        void Add(Product product);
-        IEnumerable<Product> GetAll();
-        Product? Get(int id);
-        void Delete(int id);
+        Task Add(Product product);
+        Task<IEnumerable<Product>> GetAll();
+        Task<Product?> Get(int id);
+        Task Delete(int id);
     }
     public class ProductRepository : IProductRepository
     {
@@ -35,23 +35,23 @@ namespace GeekShop.Repositories
             }
         };
         private static int IdCounter;
-        public void Add(Product product)
+        public async Task Add(Product product)
         {
             product.Id = ++IdCounter;
             _products.Add(product);
         }
 
-        public void Delete(int id)
+        public async Task Delete(int id)
         {
             _products.Remove(_products.First(p => p.Id == id));
         }
 
-        public Product? Get(int id)
+        public async Task<Product?> Get(int id)
         {
             return _products.FirstOrDefault(p => p.Id == id);
         }
 
-        public IEnumerable<Product> GetAll()
+        public async Task<IEnumerable<Product>> GetAll()
         {
             return _products;
         }
