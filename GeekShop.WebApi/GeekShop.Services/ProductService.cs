@@ -1,13 +1,14 @@
 ﻿using GeekShop.Repositories;
 using GeekShop.Domain;
+
 namespace GeekShop.Services
 {
     public interface IProductService
     {
-        void Add(Product product);
-        IEnumerable<Product> GetAll();
-        Product? Get(int id);
-        void Delete(int id);
+        Task Add(Product product);
+        Task<IEnumerable<Product>> GetAll();
+        Task<Product?> Get(int id);
+        Task Delete(int id);
     }
     public class ProductService : IProductService
     {
@@ -18,27 +19,27 @@ namespace GeekShop.Services
             _repository = repository;
         }
 
-        public void Add(Product product)
+        public async Task Add(Product product)
         {
-            _repository.Add(product);
+            await _repository.Add(product);
         }
 
-        public void Delete(int id)
+        public async Task Delete(int id)
         {
             if(_repository.Get(id) is not null)
             {
-                _repository.Delete(id);
+                await _repository.Delete(id);
             }
         }
 
-        public Product? Get(int id)
+        public async Task<Product?> Get(int id)
         {
-            return _repository.Get(id);
+            return await _repository.Get(id);
         }
 
-        public IEnumerable<Product> GetAll()
+        public async Task<IEnumerable<Product>> GetAll()
         {
-            return _repository.GetAll();
+            return await _repository.GetAll();
         }
     }
 }
