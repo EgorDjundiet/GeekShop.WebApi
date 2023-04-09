@@ -1,14 +1,7 @@
 ﻿using GeekShop.Domain;
 namespace GeekShop.Repositories
 {
-    public interface IProductRepository
-    {
-        Task Add(Product product);
-        Task<IEnumerable<Product>> GetAll();
-        Task<Product?> Get(int id);
-        Task Delete(int id);
-    }
-    public class ProductRepository : IProductRepository
+    public class InMemoryProductRepository : IProductRepository
     {
         private static List<Product> _products = new List<Product> 
         {

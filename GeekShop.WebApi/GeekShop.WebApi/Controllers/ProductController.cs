@@ -39,6 +39,12 @@ namespace GeekShop.WebApi.Controllers
         public async Task Delete(int id)
         {
             await _productService.Delete(id);
-        }       
+        }
+
+        [HttpGet("PopulateDb")]
+        public async Task PopulateDb()
+        {
+            await _productService.PopulateDb();
+        }
     }
 }

@@ -5,11 +5,11 @@ VisualStudioVersion = 17.5.33424.131
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GeekShop.WebApi", "GeekShop.WebApi\GeekShop.WebApi.csproj", "{F3E875DC-33B2-4A35-B3EC-4B58324B5FF1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeekShop.Domain", "GeekShop.Domain\GeekShop.Domain.csproj", "{C2F46A0B-FFF5-46C7-A220-98DC02F5CAD2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GeekShop.Domain", "GeekShop.Domain\GeekShop.Domain.csproj", "{C2F46A0B-FFF5-46C7-A220-98DC02F5CAD2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeekShop.Services", "GeekShop.Services\GeekShop.Services.csproj", "{7382716C-F040-4810-A2E2-6C85EF1D5480}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GeekShop.Services", "GeekShop.Services\GeekShop.Services.csproj", "{7382716C-F040-4810-A2E2-6C85EF1D5480}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeekShop.Repositories", "GeekShop.Repositories\GeekShop.Repositories.csproj", "{84BCED4E-E7D1-4D92-9D65-32B60C4E4101}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GeekShop.Repositories", "GeekShop.Repositories\GeekShop.Repositories.csproj", "{84BCED4E-E7D1-4D92-9D65-32B60C4E4101}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
