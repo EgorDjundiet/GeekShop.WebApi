@@ -8,9 +8,7 @@ namespace GeekShop.WebApi
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-
             // Add services to the container.
-
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -18,7 +16,7 @@ namespace GeekShop.WebApi
             
             //Add my own dependencies
             builder.Services.AddScoped<IProductService, ProductService>();
-            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IProductRepository, SqlProductRepository>();
 
             var app = builder.Build();
 
