@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "GeekShop.Services": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:22723;http://localhost:22725"
+    }
+  }
+}
