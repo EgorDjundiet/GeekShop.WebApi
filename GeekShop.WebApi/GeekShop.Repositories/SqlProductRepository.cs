@@ -13,13 +13,13 @@ namespace GeekShop.Repositories
         {
             var query = @"
                 INSERT INTO Products
-                ( TITLE, AUTHOR,""DESCRIPTION"")
+                ( TITLE, AUTHOR,""DESCRIPTION"",PRICE)
                 Values 
-                ( @Title, @Author, @Description)";
+                ( @Title, @Author, @Description, @Price)";
 
             using (IDbConnection connection = new SqlConnection(_connectionString))
             {
-                await connection.QueryAsync<Product>(query, new {Title = product.Title, Author = product.Author, Description = product.Description });
+                await connection.QueryAsync<Product>(query, new {Title = product.Title, Author = product.Author, Description = product.Description, Price = product.Price});
             }
         }
 
@@ -42,7 +42,8 @@ namespace GeekShop.Repositories
                 ID as Id,
                 TITLE as Title,
                 AUTHOR as Author,
-                DESCRIPTION as Description
+                DESCRIPTION as Description,
+                PRICE as Price
                 FROM Products
                 WHERE Id = @Id";
 
@@ -60,7 +61,8 @@ namespace GeekShop.Repositories
                 ID as Id,
                 TITLE as Title,
                 AUTHOR as Author,
-                DESCRIPTION as Description
+                DESCRIPTION as Description,
+                PRICE as Price
                 FROM Products";
 
 
