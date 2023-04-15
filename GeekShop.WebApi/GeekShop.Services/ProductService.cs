@@ -10,6 +10,7 @@ namespace GeekShop.Services
         Task<IEnumerable<Product>> GetAll();
         Task<Product?> Get(int id);
         Task Delete(int id);
+        Task Update(Product product);
         Task PopulateDb();
     }
     public class ProductService : IProductService
@@ -44,6 +45,10 @@ namespace GeekShop.Services
             return await _productRepository.GetAll();
         }
 
+        public async Task Update(Product product)
+        {
+            await _productRepository.Update(product);
+        }
 
         public async Task PopulateDb()
         {
@@ -74,6 +79,6 @@ namespace GeekShop.Services
             {
                 await _productRepository.Add(product);
             }
-        }
+        }      
     }
 }

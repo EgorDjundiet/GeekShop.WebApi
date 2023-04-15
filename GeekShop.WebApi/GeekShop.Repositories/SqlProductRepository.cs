@@ -54,6 +54,42 @@ namespace GeekShop.Repositories
             }
         }
 
+        public async Task<IEnumerable<Product>> GetByIds(IEnumerable<int> ids)
+        {
+            string idsStr = string.Join(",", ids);
+
+            var query = @"
+                SELECT 
+                ID as Id,
+                TITLE as Title,
+                AUTHOR as Author,
+                DESCRIPTION as Description,
+                PRICE as Price
+                FROM Products
+                WHERE Id IN (@IdsStr)";
+
+            using (IDbConnection connection = new SqlConnection(_connectionString))
+            {
+                return await connection.QueryAsync<Product>(query, new { IdsStr = idsStr });                
+            }
+        }
+        public async Task Update(Product product)
+        {
+            var query = @"
+                UPDATE Products
+                SET Title = @Title, Author = @Author, Description = @Description, Price = @Price
+                WHERE Id = @Id";
+            using (IDbConnection connection = new SqlConnection(_connectionString))
+            {
+                await connection.QueryAsync<Product>(query, new { 
+                    Id = product.Id, 
+                    Title = product.Title, 
+                    Author = product.Author, 
+                    Description = product.Description, 
+                    Price = product.Price});
+            }
+        }
+
         public async Task<IEnumerable<Product>> GetAll()
         {
             var query = @"
@@ -70,6 +106,6 @@ namespace GeekShop.Repositories
             {
                 return await connection.QueryAsync<Product>(query);
             }
-        }
+        }        
     }
 }

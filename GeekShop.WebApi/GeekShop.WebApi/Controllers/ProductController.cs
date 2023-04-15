@@ -40,7 +40,11 @@ namespace GeekShop.WebApi.Controllers
         {
             await _productService.Delete(id);
         }
-
+        [HttpPost("Update")]
+        public async Task Update(Product product)
+        {
+            await _productService.Update(product);
+        }
         [HttpGet("PopulateDb")]
         public async Task PopulateDb()
         {

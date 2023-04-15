@@ -1,5 +1,7 @@
 using GeekShop.Repositories;
 using GeekShop.Services;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace GeekShop.WebApi
 {
@@ -17,7 +19,8 @@ namespace GeekShop.WebApi
             //Add my own dependencies
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<IProductRepository, SqlProductRepository>();
-
+            builder.Services.AddScoped<IOrderService, OrderService>();
+            builder.Services.AddScoped<IOrderRepository,SqlOrderRepository>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
