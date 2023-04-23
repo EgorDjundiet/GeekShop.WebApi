@@ -21,6 +21,8 @@ namespace GeekShop.WebApi
             builder.Services.AddScoped<IProductRepository, SqlProductRepository>();
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<IOrderRepository,SqlOrderRepository>();
+            builder.Services.AddScoped<ICustomerService, CustomerService>();
+            builder.Services.AddScoped<ICustomerRepository, SqlCustomerRepository>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
