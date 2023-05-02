@@ -1,25 +1,30 @@
 ﻿using GeekShop.Domain;
 using System.Data;
 using Dapper;
-using Microsoft.Data.SqlClient;
+using GeekShop.Domain.ViewModels;
+using GeekShop.Repositories.Contexts;
+using GeekShop.Repositories.Contracts;
 
 namespace GeekShop.Repositories
 {
     public class SqlProductRepository : IProductRepository
     {
-        const string _connectionString = "Server=.\\SQLEXPRESS;Initial Catalog=GeekShop;Integrated Security=True;TrustServerCertificate=True";
-
+        private readonly Context _context;
+        public SqlProductRepository(Context context)
+        {
+            _context = context; 
+        }
         public async Task Add(Product product)
         {
             var query = @"
                 INSERT INTO Products
-                ( TITLE, AUTHOR,""DESCRIPTION"",PRICE)
+                (Title, Author, Description, Price)
                 Values 
-                ( @Title, @Author, @Description, @Price)";
+                (@Title, @Author, @Description, @Price)";
 
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+            using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync<Product>(query, new {Title = product.Title, Author = product.Author, Description = product.Description, Price = product.Price});
+                await connection.QueryAsync(query,new {Title = product.Title, Author = product.Author, Description = product.Description, Price = product.Price});
             }
         }
 
@@ -29,9 +34,9 @@ namespace GeekShop.Repositories
                 DELETE FROM Products
                 WHERE Id = @Id";
 
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+            using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync<Product>(query, new { Id = id});
+                await connection.QueryAsync(query, new { Id = id});
             }
         }
 
@@ -39,39 +44,37 @@ namespace GeekShop.Repositories
         {
             var query = @"
                 SELECT 
-                ID as Id,
-                TITLE as Title,
-                AUTHOR as Author,
-                DESCRIPTION as Description,
-                PRICE as Price
+                Id, 
+                Title,
+                Author,
+                Description,
+                Price
                 FROM Products
                 WHERE Id = @Id";
 
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+            using (IDbConnection connection = _context.CreateConnection())
             { 
-                var resultEnumerable = await connection.QueryAsync<Product>(query, new { Id = id});
-                return resultEnumerable.FirstOrDefault();
+                return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id});
             }
         }
 
         public async Task<IEnumerable<Product>> GetByIds(IEnumerable<int> ids)
         {
-            string idsStr = string.Join(",", ids);
-
             var query = @"
                 SELECT 
-                ID as Id,
-                TITLE as Title,
-                AUTHOR as Author,
-                DESCRIPTION as Description,
-                PRICE as Price
+                Id,
+                Title,
+                Author,
+                Description,
+                Price
                 FROM Products
-                WHERE Id IN (@IdsStr)";
-
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+                WHERE Id IN @Ids";
+    
+            using (IDbConnection connection = _context.CreateConnection())
             {
-                return await connection.QueryAsync<Product>(query, new { IdsStr = idsStr });                
+                return await connection.QueryAsync<Product>(query, new { Ids = ids.ToArray() });               
             }
+
         }
         public async Task Update(Product product)
         {
@@ -79,14 +82,16 @@ namespace GeekShop.Repositories
                 UPDATE Products
                 SET Title = @Title, Author = @Author, Description = @Description, Price = @Price
                 WHERE Id = @Id";
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+
+            using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync<Product>(query, new { 
+                await connection.QueryAsync(query, new { 
                     Id = product.Id, 
                     Title = product.Title, 
                     Author = product.Author, 
                     Description = product.Description, 
-                    Price = product.Price});
+                    Price = product.Price
+                });
             }
         }
 
@@ -94,15 +99,15 @@ namespace GeekShop.Repositories
         {
             var query = @"
                 SELECT 
-                ID as Id,
-                TITLE as Title,
-                AUTHOR as Author,
-                DESCRIPTION as Description,
-                PRICE as Price
+                Id,
+                Title,
+                Author,
+                Description,
+                Price
                 FROM Products";
 
 
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+            using (IDbConnection connection = _context.CreateConnection())
             {
                 return await connection.QueryAsync<Product>(query);
             }

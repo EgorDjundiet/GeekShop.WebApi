@@ -1,8 +1,9 @@
 using GeekShop.Repositories;
+using GeekShop.Repositories.Contracts;
 using GeekShop.Services;
-using Microsoft.Data.SqlClient;
-using System.Data;
-
+using GeekShop.Services.Contracts;
+using GeekShop.WebApi.MiddlewareComponents;
+using GeekShop.Repositories.Contexts;
 namespace GeekShop.WebApi
 {
     public class Program
@@ -15,8 +16,10 @@ namespace GeekShop.WebApi
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-            
+
             //Add my own dependencies
+
+            builder.Services.AddSingleton<Context>();
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<IProductRepository, SqlProductRepository>();
             builder.Services.AddScoped<IOrderService, OrderService>();
@@ -24,7 +27,7 @@ namespace GeekShop.WebApi
             builder.Services.AddScoped<ICustomerService, CustomerService>();
             builder.Services.AddScoped<ICustomerRepository, SqlCustomerRepository>();
             var app = builder.Build();
-
+            app.UseMiddleware<ExceptionHandlerMiddleware>();
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {

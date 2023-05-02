@@ -1,18 +1,12 @@
-﻿using GeekShop.Repositories;
-using GeekShop.Domain;
-using System.Diagnostics.Metrics;
+﻿using GeekShop.Domain;
+using GeekShop.Domain.Exceptions;
+using GeekShop.Domain.ViewModels;
+using GeekShop.Repositories.Contracts;
+using GeekShop.Services.Contracts;
+using System.Linq;
 
 namespace GeekShop.Services
 {
-    public interface IProductService
-    {
-        Task Add(Product product);
-        Task<IEnumerable<Product>> GetAll();
-        Task<Product?> Get(int id);
-        Task Delete(int id);
-        Task Update(Product product);
-        Task PopulateDb();
-    }
     public class ProductService : IProductService
     {
         private readonly IProductRepository _productRepository;
@@ -22,22 +16,30 @@ namespace GeekShop.Services
             _productRepository = repository;
         }
 
-        public async Task Add(Product product)
+        public async Task Add(SubmitProductIn productIn)
         {
+            var product = new Product() { Title = productIn.Title, Author = productIn.Author, Description = productIn.Description, Price = productIn.Price};
             await _productRepository.Add(product);
         }
 
         public async Task Delete(int id)
         {
-            if(_productRepository.Get(id) is not null)
+            var product = await _productRepository.Get(id);
+            if (product is null)
             {
-                await _productRepository.Delete(id);
+                throw new GeekShopNotFoundException($"Invalid product id {id}");
             }
+            await _productRepository.Delete(id);         
         }
 
         public async Task<Product?> Get(int id)
         {
-            return await _productRepository.Get(id);
+            var product = await _productRepository.Get(id);
+            if (product is null)
+            {
+                throw new GeekShopNotFoundException($"Invalid product id {id}");
+            }
+            return product;
         }
 
         public async Task<IEnumerable<Product>> GetAll()
@@ -45,40 +47,32 @@ namespace GeekShop.Services
             return await _productRepository.GetAll();
         }
 
-        public async Task Update(Product product)
+        public async Task<IEnumerable<Product>> GetByIds(IEnumerable<int> ids)
         {
-            await _productRepository.Update(product);
+            ids = ids.Distinct();
+            var products = await _productRepository.GetByIds(ids);
+            var invalidIds = ids.Where(id => !products.Select(p => p.Id).Contains(id));
+            if (invalidIds.Count() > 0)
+            {
+                var unfoundIds = string.Join(",", invalidIds);
+                throw new GeekShopNotFoundException($"Invalid product ids {unfoundIds}");
+            }
+            return await _productRepository.GetByIds(ids);
         }
 
-        public async Task PopulateDb()
+        public async Task Update(int id, SubmitProductIn productIn)
         {
-            List<Product> list = new()
+            var product = await _productRepository.Get(id);
+            if (product is null)
             {
-                new Product
-                {
-                    Title = "Harry Potter and the Philosopher's Stone",
-                    Author = "J.K.Rowling",
-                    Description = "The story of the boy who survived"
-                },
-                new Product
-                {
-                    Title = "War and Peace",
-                    Author = "Lev Tolstoy",
-                    Description = "The рistorical novel about war and peace"
-                },
-                new Product
-                {
-
-                    Title = "The Catcher in the Rye",
-                    Author = "J.D.Salinger",
-                    Description ="The story of the teen who found a purpose in his life"
-                }
-            };
-            
-            foreach (var product in list)
-            {
-                await _productRepository.Add(product);
+                throw new GeekShopNotFoundException($"Invalid product id {id}");
             }
+            product.Title = productIn.Title;
+            product.Author = productIn.Author;
+            product.Description = productIn.Description; 
+            product.Price = productIn.Price;
+
+            await _productRepository.Update(product);
         }      
     }
 }

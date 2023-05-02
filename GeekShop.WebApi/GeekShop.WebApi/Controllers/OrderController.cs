@@ -1,5 +1,7 @@
 ﻿using GeekShop.Domain;
+using GeekShop.Domain.ViewModels;
 using GeekShop.Services;
+using GeekShop.Services.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GeekShop.WebApi.Controllers
@@ -25,11 +27,16 @@ namespace GeekShop.WebApi.Controllers
         {
             return await _orderService.Get(id);
         }
+        [HttpPost("GetByIds")]
+        public async Task<IEnumerable<Order?>> GetByIds([FromBody] IEnumerable<int> ids)
+        {
+            return await _orderService.GetByIds(ids);
+        }
 
         [HttpPost("Add")]
-        public async Task Add(Order order)
+        public async Task Add([FromBody] SubmitOrderIn orderIn)
         {
-            await _orderService.Add(order);
+            await _orderService.Add(orderIn);                    
         }
 
         [HttpDelete("Delete")]
@@ -38,10 +45,10 @@ namespace GeekShop.WebApi.Controllers
             await _orderService.Delete(id);
         }
 
-        [HttpPost("Update")]
-        public async Task Update(Order order)
+        [HttpPut("Update")]
+        public async Task Update(int id,[FromBody] SubmitOrderIn orderIn)
         {
-            await _orderService.Update(order);
+            await _orderService.Update(id, orderIn);
         }
     }
 }

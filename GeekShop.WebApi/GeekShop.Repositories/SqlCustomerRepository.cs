@@ -1,66 +1,86 @@
 ﻿using Dapper;
 using GeekShop.Domain;
+using GeekShop.Repositories.Contexts;
+using GeekShop.Repositories.Contracts;
 using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
+using Microsoft.Extensions.Configuration;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GeekShop.Repositories
 {
     public class SqlCustomerRepository : ICustomerRepository
     {
-        const string _connectionString = "Server=.\\SQLEXPRESS;Initial Catalog=GeekShop;Integrated Security=True;TrustServerCertificate=True";
+        private readonly Context _context;
+        public SqlCustomerRepository(Context context)
+        {
+            _context = context;
+        }
         public async Task Add(Customer customer)
         {
-            using(IDbConnection connection = new SqlConnection(_connectionString))
+            var sql = @"
+                INSERT INTO Customers
+                (Name, Address, PhoneNumber, Email)
+                VALUES(@Name,@Address,@PhoneNumber,@Email)";
+
+            using(IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync<Customer>(@"
-                    INSERT INTO Customers
-                    (Name, Address, PhoneNumber, Email)
-                    VALUES(@Name,@Address,@PhoneNumber,@Email)", customer);
+                await connection.QueryAsync(sql, customer);
             }
         }
 
         public async Task Delete(int id)
         {
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+            var sql = @"
+                DELETE FROM Customers
+                WHERE Id = @Id";
+            using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync<Customer>(@"
-                    DELETE FROM Customers
-                    WHERE Id = @Id", new {Id = id});
+                await connection.QueryAsync(sql, new {Id = id});
             }
         }
 
         public async Task<Customer?> Get(int id)
         {
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+            var sql = @"
+                SELECT Id, Name, Address, PhoneNumber, Email FROM Customers
+                WHERE Id = @Id";
+            using (IDbConnection connection = _context.CreateConnection())
             {
-                return (await connection.QueryAsync<Customer>(@"
-                    SELECT Id, Name, Address, PhoneNumber, Email FROM Customers
-                    WHERE Id = @Id", new {Id = id})).FirstOrDefault();
+                return await connection.QuerySingleOrDefaultAsync<Customer>(sql, new {Id = id});
             }
         }
 
         public async Task<IEnumerable<Customer>> GetAll()
         {
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+            var sql = @"SELECT Id, Name, Address, PhoneNumber, Email FROM Customers";
+            using (IDbConnection connection = _context.CreateConnection())
             {
-                return await connection.QueryAsync<Customer>(@"
-                    SELECT Id, Name, Address, PhoneNumber, Email FROM Customers");
+                return await connection.QueryAsync<Customer>(sql);
+            }
+        }
+
+        public async Task<IEnumerable<Customer?>> GetByIds(IEnumerable<int> ids)
+        {
+            var sql = @"
+                SELECT Id,Name,Address,PhoneNumber,Email FROM Customers
+                WHERE Id in @Ids";
+
+            using (IDbConnection connection = _context.CreateConnection())
+            {
+                return await connection.QueryAsync<Customer>(sql, new {Ids = ids.ToArray()});
             }
         }
 
         public async Task Update(Customer customer)
         {
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+            var sql = @"
+                UPDATE Customers
+                SET Name = @Name, Address = @Address, PhoneNumber = @PhoneNumber, Email = @Email
+                WHERE Id = @Id";
+
+            using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync<Customer>(@"
-                    UPDATE Customers
-                    SET Name = @Name, Address = @Address, PhoneNumber = @PhoneNumber, Email = @Email
-                    WHERE Id = @Id", customer);
+                await connection.QueryAsync(sql, customer);
             }
         }
     }

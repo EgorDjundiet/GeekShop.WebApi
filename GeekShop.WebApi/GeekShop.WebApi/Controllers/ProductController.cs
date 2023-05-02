@@ -1,7 +1,9 @@
 ﻿using GeekShop.Domain;
-using GeekShop.Repositories;
+using GeekShop.Domain.ViewModels;
 using GeekShop.Services;
+using GeekShop.Services.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections;
 
 namespace GeekShop.WebApi.Controllers
 {
@@ -9,11 +11,9 @@ namespace GeekShop.WebApi.Controllers
     [Route("[controller]")]
     public class ProductController : ControllerBase
     {
-        private readonly ILogger<ProductController> _logger;
         private readonly IProductService _productService;
-        public ProductController(ILogger<ProductController> logger, IProductService productService)
+        public ProductController(IProductService productService)
         {
-            _logger = logger;
             _productService = productService;
         }
 
@@ -22,33 +22,35 @@ namespace GeekShop.WebApi.Controllers
         {
             return await _productService.GetAll();
         }
-
+        
         [HttpGet("Get")]
         public async Task<Product?> Get(int id)
         {
             return await _productService.Get(id);
         }
 
-        [HttpPost("Add")]
-        public async Task Add(Product product)
+        [HttpPost("GetByIds")]
+        public async Task<IEnumerable<Product>> GetByIds([FromBody]IEnumerable<int> ids)
         {
-            await _productService.Add(product);
+            return await _productService.GetByIds(ids);           
+        }
+
+        [HttpPost("Add")]
+        public async Task Add([FromBody]SubmitProductIn productIn)
+        {
+            await _productService.Add(productIn);              
         }
 
         [HttpDelete("Delete")]
         public async Task Delete(int id)
         {
-            await _productService.Delete(id);
+            await _productService.Get(id);
         }
-        [HttpPost("Update")]
-        public async Task Update(Product product)
+
+        [HttpPut("Update")]
+        public async Task Update(int id, [FromBody]SubmitProductIn productIn)
         {
-            await _productService.Update(product);
-        }
-        [HttpGet("PopulateDb")]
-        public async Task PopulateDb()
-        {
-            await _productService.PopulateDb();
+            await _productService.Update(id,productIn);
         }
     }
 }

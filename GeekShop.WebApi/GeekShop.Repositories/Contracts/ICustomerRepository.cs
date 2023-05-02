@@ -1,11 +1,6 @@
 ﻿using GeekShop.Domain;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace GeekShop.Repositories
+namespace GeekShop.Repositories.Contracts
 {
     public interface ICustomerRepository
     {
@@ -14,5 +9,6 @@ namespace GeekShop.Repositories
         Task Delete(int id);
         Task<Customer?> Get(int id);
         Task<IEnumerable<Customer>> GetAll();
+        Task<IEnumerable<Customer?>> GetByIds(IEnumerable<int> ids);
     }
 }
