@@ -9,8 +9,8 @@ namespace GeekShop.Repositories
 {
     public class SqlProductRepository : IProductRepository
     {
-        private readonly Context _context;
-        public SqlProductRepository(Context context)
+        private readonly IDbContext _context;
+        public SqlProductRepository(IDbContext context)
         {
             _context = context; 
         }
@@ -24,7 +24,13 @@ namespace GeekShop.Repositories
 
             using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync(query,new {Title = product.Title, Author = product.Author, Description = product.Description, Price = product.Price});
+                await connection.QueryAsync(query,new 
+                {
+                    Title = product.Title, 
+                    Author = product.Author, 
+                    Description = product.Description,
+                    Price = product.Price
+                });
             }
         }
 
@@ -40,7 +46,7 @@ namespace GeekShop.Repositories
             }
         }
 
-        public async Task<Product> Get(int id)
+        public async Task<Product?> Get(int id)
         {
             var query = @"
                 SELECT 
@@ -54,7 +60,7 @@ namespace GeekShop.Repositories
 
             using (IDbConnection connection = _context.CreateConnection())
             { 
-                return await connection.QueryFirstAsync<Product>(query, new { Id = id});
+                return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id});
             }
         }
 

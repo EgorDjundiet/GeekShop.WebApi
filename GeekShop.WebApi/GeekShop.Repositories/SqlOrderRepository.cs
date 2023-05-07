@@ -9,10 +9,10 @@ namespace GeekShop.Repositories
 {
     public class SqlOrderRepository : IOrderRepository
     {
-        private readonly Context _context;
+        private readonly IDbContext _context;
         private readonly IProductRepository _productRepository;
         
-        public SqlOrderRepository(Context context, IProductRepository repository)
+        public SqlOrderRepository(IDbContext context, IProductRepository repository)
         {
             _context = context;
             _productRepository = repository;
@@ -20,8 +20,8 @@ namespace GeekShop.Repositories
         public async Task Add(Order order)
         {
             var sqlOrder = @"
-                INSERT INTO Orders (CustomerName, CustomerAddress, Date, PhoneNumber)
-                VALUES (@CustomerName, @CustomerAddress, @Date, @PhoneNumber);
+                INSERT INTO Orders (CustomerName, CustomerAddress, Date, PhoneNumber, Email)
+                VALUES (@CustomerName, @CustomerAddress, @Date, @PhoneNumber, @Email);
                 SELECT SCOPE_IDENTITY()";
 
             var sqlOrderDetails = @"
@@ -35,6 +35,7 @@ namespace GeekShop.Repositories
                     CustomerName = order.CustomerName,
                     CustomerAddress = order.CustomerAddress,
                     PhoneNumber = order.PhoneNumber,
+                    Email = order.Email,
                     Date = DateTime.UtcNow
                 });
 
@@ -69,7 +70,7 @@ namespace GeekShop.Repositories
                 var orderDictionary = new Dictionary<int, Order>();
 
                 var sql = @"
-                SELECT o.Id, o.CustomerName, o.CustomerAddress, o.PhoneNumber, o.Date, od.Id, od.ProductQuantity, p.Id, p.Title, p.Author, p.Description, p.Price
+                SELECT o.Id, o.CustomerName, o.CustomerAddress, o.PhoneNumber, o.Email, o.Date, od.Id, od.ProductQuantity, p.Id, p.Title, p.Author, p.Description, p.Price
                 FROM Orders o
                 LEFT JOIN OrderDetails od ON o.Id = od.OrderId
                 LEFT JOIN Products p ON od.ProductId = p.Id
@@ -104,7 +105,7 @@ namespace GeekShop.Repositories
                 var orderDictionary = new Dictionary<int, Order>();
 
                 var sql = @"
-                SELECT o.Id, o.CustomerName, o.CustomerAddress, o.PhoneNumber, o.Date, od.Id, od.ProductQuantity, p.Id, p.Title, p.Author, p.Description, p.Price
+                SELECT o.Id, o.CustomerName, o.CustomerAddress, o.PhoneNumber, o.Email, o.Date, od.Id, od.ProductQuantity, p.Id, p.Title, p.Author, p.Description, p.Price
                 FROM Orders o
                 LEFT JOIN OrderDetails od ON o.Id = od.OrderId
                 LEFT JOIN Products p ON od.ProductId = p.Id";
@@ -131,14 +132,14 @@ namespace GeekShop.Repositories
             }
         }
 
-        public async Task<IEnumerable<Order?>> GetByIds(IEnumerable<int> ids)
+        public async Task<IEnumerable<Order>> GetByIds(IEnumerable<int> ids)
         {
             using (IDbConnection connection = _context.CreateConnection())
             {
                 var orderDictionary = new Dictionary<int, Order>();
 
                 var sql = @"
-                SELECT o.Id, o.CustomerName, o.CustomerAddress, o.PhoneNumber, o.Date, od.Id, od.ProductQuantity, p.Id, p.Title, p.Author, p.Description, p.Price
+                SELECT o.Id, o.CustomerName, o.CustomerAddress, o.PhoneNumber, o.Email, o.Date, od.Id, od.ProductQuantity, p.Id, p.Title, p.Author, p.Description, p.Price
                 FROM Orders o
                 LEFT JOIN OrderDetails od ON o.Id = od.OrderId
                 LEFT JOIN Products p ON od.ProductId = p.Id
@@ -170,7 +171,7 @@ namespace GeekShop.Repositories
         {
             var sqlOrder = @"
                 UPDATE Orders
-                SET CustomerName = @CustomerName, CustomerAddress = @CustomerAddress, PhoneNumber = @PhoneNumber
+                SET CustomerName = @CustomerName, CustomerAddress = @CustomerAddress, PhoneNumber = @PhoneNumber, Email = @Email
                 WHERE Id = @Id";
 
             var sqlOrderDetails = @"

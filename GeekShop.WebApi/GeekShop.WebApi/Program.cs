@@ -1,13 +1,5 @@
-using GeekShop.Repositories;
-using GeekShop.Repositories.Contracts;
-using GeekShop.Services;
-using GeekShop.Services.Contracts;
 using GeekShop.WebApi.MiddlewareComponents;
-using GeekShop.Repositories.Contexts;
-using GeekShop.Domain.Validators;
-using FluentValidation;
-using GeekShop.Domain;
-using GeekShop.Domain.ViewModels;
+using GeekShop.Domain.Settings;
 
 namespace GeekShop.WebApi
 {
@@ -23,22 +15,16 @@ namespace GeekShop.WebApi
             builder.Services.AddSwaggerGen();
 
             //Add my own dependencies
+            builder.Services.Configure<DbOptions>(builder.Configuration.GetSection(DbOptions.BasePosition));
+            builder.Services.AddSingleton<IDbSettings, DbSettings>();
+            builder.Services.RegisterDependencies();
 
-            builder.Services.AddSingleton<Context>();
-            builder.Services.AddScoped<IProductService, ProductService>();
-            builder.Services.AddScoped<IProductRepository, SqlProductRepository>();
-            builder.Services.AddScoped<IOrderService, OrderService>();
-            builder.Services.AddScoped<IOrderRepository,SqlOrderRepository>();
-            builder.Services.AddScoped<ICustomerService, CustomerService>();
-            builder.Services.AddScoped<ICustomerRepository, SqlCustomerRepository>();
-            builder.Services.AddScoped<AbstractValidator<SubmitCustomerIn>,SubmitCustomerInValidator>();
-            builder.Services.AddScoped<AbstractValidator<SubmitOrderIn>,SumbitOrderInValidator>();
-            builder.Services.AddScoped<AbstractValidator<SubmitOrderDetailsIn>,SubmitOrderDetailsInValidator>();
-            builder.Services.AddScoped<AbstractValidator<SubmitProductIn>,SubmitProductInValidator>();
+            // Settings
+            
 
             var app = builder.Build();
-            app.UseMiddleware<ExceptionHandlerMiddleware>();
             // Configure the HTTP request pipeline.
+            app.UseMiddleware<ExceptionHandlerMiddleware>();
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();

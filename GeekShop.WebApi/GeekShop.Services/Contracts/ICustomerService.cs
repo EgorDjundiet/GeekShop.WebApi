@@ -8,8 +8,8 @@ namespace GeekShop.Services.Contracts
         Task Add(SubmitCustomerIn customer);
         Task Update(int id, SubmitCustomerIn customer);
         Task Delete(int id);
-        Task<Customer?> Get(int id);
+        Task<Customer> Get(int id);
         Task<IEnumerable<Customer>> GetAll();
-        Task<IEnumerable<Customer?>> GetByIds(IEnumerable<int> ids);
+        Task<IEnumerable<Customer>> GetByIds(IEnumerable<int> ids);
     }
 }

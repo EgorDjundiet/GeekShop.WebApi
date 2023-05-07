@@ -25,7 +25,7 @@ namespace GeekShop.Services
                 throw new GeekShopValidationException(result.ToString());
             }
 
-            var product = new Product() { Title = productIn.Title, Author = productIn.Author, Description = productIn.Description, Price = productIn.Price.Value};
+            var product = new Product() { Title = productIn.Title!, Author = productIn.Author!, Description = productIn.Description, Price = productIn.Price!.Value};
             await _productRepository.Add(product);
         }
 
@@ -79,11 +79,10 @@ namespace GeekShop.Services
             {
                 throw new GeekShopNotFoundException($"Invalid product id {id}");
             }
-            product.Title = productIn.Title;
-            product.Author = productIn.Author;
+            product.Title = productIn.Title!;
+            product.Author = productIn.Author!;
             product.Description = productIn.Description; 
-            product.Price = productIn.Price.Value;
-
+            product.Price = productIn.Price!.Value;
             
             await _productRepository.Update(product);
         }      

@@ -10,8 +10,8 @@ namespace GeekShop.Repositories
 {
     public class SqlCustomerRepository : ICustomerRepository
     {
-        private readonly Context _context;
-        public SqlCustomerRepository(Context context)
+        private readonly IDbContext _context;
+        public SqlCustomerRepository(IDbContext context)
         {
             _context = context;
         }
@@ -59,7 +59,7 @@ namespace GeekShop.Repositories
             }
         }
 
-        public async Task<IEnumerable<Customer?>> GetByIds(IEnumerable<int> ids)
+        public async Task<IEnumerable<Customer>> GetByIds(IEnumerable<int> ids)
         {
             var sql = @"
                 SELECT Id,Name,Address,PhoneNumber,Email FROM Customers

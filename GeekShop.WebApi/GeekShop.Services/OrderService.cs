@@ -24,25 +24,8 @@ namespace GeekShop.Services
         }
 
 
-        // TODO: Review using SubmitOrderIn (Suggest to convert it to Domain.Order) // DONE
         public async Task Add(SubmitOrderIn orderIn)
         {
-            var result = _orderValidator.Validate(orderIn);
-            if (!result.IsValid)
-            {
-                throw new GeekShopValidationException(result.ToString());
-            }
-
-            var validProducts = await _productRepository.GetByIds(orderIn.Details.Select(x => x.ProductId.Value));
-            var validProductsIds = validProducts.Select(x => x.Id);
-
-            var invalidProductIds = orderIn.Details.Select(x => x.ProductId.Value).Except(validProductsIds);
-            if (invalidProductIds.Count() > 0)
-            {
-                var unfoundIds = string.Join(",", invalidProductIds);
-                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}");
-            }
-
             if (orderIn.CustomerId is not null)
             {
                 var customer = await _customerRepository.Get(orderIn.CustomerId.Value);
@@ -55,17 +38,36 @@ namespace GeekShop.Services
                 orderIn.CustomerName = customer.Name;
                 orderIn.CustomerAddress = customer.Address;
                 orderIn.PhoneNumber = customer.PhoneNumber;
+                orderIn.Email = customer.Email;
             }
 
+            var result = _orderValidator.Validate(orderIn);
+            if (!result.IsValid)
+            {
+                throw new GeekShopValidationException(result.ToString());
+            }
+
+            var validProducts = await _productRepository.GetByIds(orderIn.Details!.Select(x => x.ProductId!.Value));
+            var validProductsIds = validProducts.Select(x => x.Id);
+
+            var invalidProductIds = orderIn.Details!.Select(x => x.ProductId!.Value).Except(validProductsIds);
+            if (invalidProductIds.Count() > 0)
+            {
+                var unfoundIds = string.Join(",", invalidProductIds);
+                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}");
+            }
+
+            
             var order = new Order()
             {
-                CustomerName = orderIn.CustomerName,
-                CustomerAddress = orderIn.CustomerAddress,
+                CustomerName = orderIn.CustomerName!,
+                CustomerAddress = orderIn.CustomerAddress!,
                 PhoneNumber = orderIn.PhoneNumber,
-                Details = orderIn.Details.Select(detail => new OrderDetails()
+                Email = orderIn.Email,
+                Details = orderIn.Details!.Select(detail => new OrderDetails()
                 {
                     Product = validProducts.Where(product => product.Id == detail.ProductId).Single(),
-                    ProductQuantity = detail.ProductQuantity
+                    ProductQuantity = detail.ProductQuantity!.Value
                 }).ToList()
             };
 
@@ -99,51 +101,59 @@ namespace GeekShop.Services
 
         public async Task Update(int id, SubmitOrderIn orderIn)
         {
-            if(await _orderRepository.Get(id) is null)
-            {
-                throw new GeekShopNotFoundException($"Invalid order id: {id}.");
-            }
-            var validProducts = await _productRepository.GetByIds(orderIn.Details.Select(x => x.ProductId));
-            var validProductsIds = validProducts.Select(x => x.Id);
-
-            var invalidProductIds = orderIn.Details.Select(x => x.ProductId).Except(validProductsIds);
-            if (invalidProductIds.Count() > 0)
-            {
-                var unfoundIds = string.Join(",", invalidProductIds);
-                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}.");
-            }
-
             if (orderIn.CustomerId is not null)
             {
                 var customer = await _customerRepository.Get(orderIn.CustomerId.Value);
 
                 if (customer is null)
                 {
-                    throw new GeekShopNotFoundException($"Invalid customerId: {orderIn.CustomerId}.");
+                    throw new GeekShopNotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
                 }
 
                 orderIn.CustomerName = customer.Name;
                 orderIn.CustomerAddress = customer.Address;
                 orderIn.PhoneNumber = customer.PhoneNumber;
+                orderIn.Email = customer.Email;
+            }
+
+            var result = _orderValidator.Validate(orderIn);
+            if (!result.IsValid)
+            {
+                throw new GeekShopValidationException(result.ToString());
+            }
+            if(await _orderRepository.Get(id) is null)
+            {
+                throw new GeekShopNotFoundException($"Invalid order id: {id}.");
+            }
+
+            var validProducts = await _productRepository.GetByIds(orderIn.Details!.Select(x => x.ProductId!.Value));
+            var validProductsIds = validProducts.Select(x => x.Id);
+
+            var invalidProductIds = orderIn.Details!.Select(x => x.ProductId!.Value).Except(validProductsIds);
+            if (invalidProductIds.Count() > 0)
+            {
+                var unfoundIds = string.Join(",", invalidProductIds);
+                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}.");
             }
 
             var order = new Order()
             {
                 Id = id,
-                CustomerName = orderIn.CustomerName,
-                CustomerAddress = orderIn.CustomerAddress,
+                CustomerName = orderIn.CustomerName!,
+                CustomerAddress = orderIn.CustomerAddress!,
                 PhoneNumber = orderIn.PhoneNumber,
-                Details = orderIn.Details.Select(detail => new OrderDetails()
+                Email = orderIn.Email,
+                Details = orderIn.Details!.Select(detail => new OrderDetails()
                 {
                     Product = validProducts.Where(product => product.Id == detail.ProductId).Single(),
-                    ProductQuantity = detail.ProductQuantity
+                    ProductQuantity = detail.ProductQuantity!.Value
                 }).ToList()
             };
             
             await _orderRepository.Update(order);
         }
 
-        public async Task<IEnumerable<Order?>> GetByIds(IEnumerable<int>? ids)
+        public async Task<IEnumerable<Order>> GetByIds(IEnumerable<int> ids)
         {
             ids = ids.Distinct();
             var orders = await _orderRepository.GetByIds(ids);
