@@ -9,8 +9,8 @@ namespace GeekShop.Repositories
 {
     public class SqlProductRepository : IProductRepository
     {
-        private readonly Context _context;
-        public SqlProductRepository(Context context)
+        private readonly IDbContext _context;
+        public SqlProductRepository(IDbContext context)
         {
             _context = context; 
         }
@@ -24,7 +24,13 @@ namespace GeekShop.Repositories
 
             using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync(query,new {Title = product.Title, Author = product.Author, Description = product.Description, Price = product.Price});
+                await connection.QueryAsync(query,new 
+                {
+                    Title = product.Title, 
+                    Author = product.Author, 
+                    Description = product.Description,
+                    Price = product.Price
+                });
             }
         }
 

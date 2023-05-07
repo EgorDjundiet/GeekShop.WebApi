@@ -7,7 +7,7 @@ namespace GeekShop.Repositories.Contracts
     {
         Task Add(Order order);
         Task<IEnumerable<Order>> GetAll();
-        Task<IEnumerable<Order?>> GetByIds(IEnumerable<int> ids);
+        Task<IEnumerable<Order>> GetByIds(IEnumerable<int> ids);
         Task<Order?> Get(int id);
         Task Delete(int id);
         Task Update(Order order);

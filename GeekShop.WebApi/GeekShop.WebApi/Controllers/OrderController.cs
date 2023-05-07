@@ -23,12 +23,13 @@ namespace GeekShop.WebApi.Controllers
         }
 
         [HttpGet("Get")]
-        public async Task<Order?> Get(int id)
+        public async Task<Order> Get(int id)
         {
             return await _orderService.Get(id);
         }
+
         [HttpPost("GetByIds")]
-        public async Task<IEnumerable<Order?>> GetByIds([FromBody] IEnumerable<int> ids)
+        public async Task<IEnumerable<Order>> GetByIds([FromBody] IEnumerable<int> ids)
         {
             return await _orderService.GetByIds(ids);
         }
