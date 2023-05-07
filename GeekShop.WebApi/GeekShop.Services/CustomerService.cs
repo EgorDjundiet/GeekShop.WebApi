@@ -1,4 +1,5 @@
-﻿using GeekShop.Domain;
+﻿using FluentValidation;
+using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contracts;
@@ -16,13 +17,21 @@ namespace GeekShop.Services
     public class CustomerService : ICustomerService
     {
         ICustomerRepository _customerRepository;
-        public CustomerService(ICustomerRepository customerRepository)
+        AbstractValidator<Customer> _customerValidator;
+        public CustomerService(ICustomerRepository customerRepository, AbstractValidator<Customer> customerValidator)
         {
             _customerRepository = customerRepository;
+            _customerValidator = customerValidator;
         }
         public async Task Add(SubmitCustomerIn customerIn)
         {
             var customer = new Customer() { Name = customerIn.Name, Address = customerIn.Address, PhoneNumber = customerIn.PhoneNumber, Email = customerIn.Email};
+            var result = _customerValidator.Validate(customer);
+            if (!result.IsValid)
+            {
+                throw new GeekShopValidationException(result.ToString());
+            }
+
             await _customerRepository.Add(customer);
         }
 
@@ -75,6 +84,13 @@ namespace GeekShop.Services
             customer.Address = customerIn.Address;
             customer.PhoneNumber = customerIn.PhoneNumber;
             customer.Email = customerIn.Email;
+
+            var result = _customerValidator.Validate(customer);
+            if (!result.IsValid)
+            {
+                throw new GeekShopValidationException(result.ToString());
+            }
+
             await _customerRepository.Update(customer);
         }
     }

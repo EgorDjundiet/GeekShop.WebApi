@@ -4,6 +4,11 @@ using GeekShop.Services;
 using GeekShop.Services.Contracts;
 using GeekShop.WebApi.MiddlewareComponents;
 using GeekShop.Repositories.Contexts;
+using GeekShop.Domain.Validators;
+using FluentValidation;
+using GeekShop.Domain;
+using GeekShop.Domain.ViewModels;
+
 namespace GeekShop.WebApi
 {
     public class Program
@@ -26,6 +31,11 @@ namespace GeekShop.WebApi
             builder.Services.AddScoped<IOrderRepository,SqlOrderRepository>();
             builder.Services.AddScoped<ICustomerService, CustomerService>();
             builder.Services.AddScoped<ICustomerRepository, SqlCustomerRepository>();
+            builder.Services.AddScoped<AbstractValidator<SubmitCustomerIn>,SubmitCustomerInValidator>();
+            builder.Services.AddScoped<AbstractValidator<SubmitOrderIn>,SumbitOrderInValidator>();
+            builder.Services.AddScoped<AbstractValidator<SubmitOrderDetailsIn>,SubmitOrderDetailsInValidator>();
+            builder.Services.AddScoped<AbstractValidator<SubmitProductIn>,SubmitProductInValidator>();
+
             var app = builder.Build();
             app.UseMiddleware<ExceptionHandlerMiddleware>();
             // Configure the HTTP request pipeline.

@@ -24,7 +24,7 @@ namespace GeekShop.WebApi.Controllers
         }
         
         [HttpGet("Get")]
-        public async Task<Product?> Get(int id)
+        public async Task<Product> Get(int id)
         {
             return await _productService.Get(id);
         }

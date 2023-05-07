@@ -40,7 +40,7 @@ namespace GeekShop.Repositories
             }
         }
 
-        public async Task<Product?> Get(int id)
+        public async Task<Product> Get(int id)
         {
             var query = @"
                 SELECT 
@@ -54,7 +54,7 @@ namespace GeekShop.Repositories
 
             using (IDbConnection connection = _context.CreateConnection())
             { 
-                return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id});
+                return await connection.QueryFirstAsync<Product>(query, new { Id = id});
             }
         }
 

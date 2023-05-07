@@ -1,5 +1,7 @@
-﻿using GeekShop.Domain;
+﻿using FluentValidation;
+using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
+using GeekShop.Domain.Validators;
 using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
@@ -11,21 +13,30 @@ namespace GeekShop.Services
         private readonly IOrderRepository _orderRepository;
         private readonly IProductRepository _productRepository;
         private readonly ICustomerRepository _customerRepository;
-        public OrderService(IOrderRepository repository, IProductRepository productRepository, ICustomerRepository customerRepository)
+        private readonly AbstractValidator<SubmitOrderIn> _orderValidator;
+
+        public OrderService(IOrderRepository repository, IProductRepository productRepository, ICustomerRepository customerRepository, AbstractValidator<SubmitOrderIn> orderValidator)
         {
             _orderRepository = repository;
             _productRepository = productRepository;
             _customerRepository = customerRepository;
+            _orderValidator = orderValidator;
         }
 
 
         // TODO: Review using SubmitOrderIn (Suggest to convert it to Domain.Order) // DONE
         public async Task Add(SubmitOrderIn orderIn)
         {
-            var validProducts = await _productRepository.GetByIds(orderIn.Details.Select(x => x.ProductId));
+            var result = _orderValidator.Validate(orderIn);
+            if (!result.IsValid)
+            {
+                throw new GeekShopValidationException(result.ToString());
+            }
+
+            var validProducts = await _productRepository.GetByIds(orderIn.Details.Select(x => x.ProductId.Value));
             var validProductsIds = validProducts.Select(x => x.Id);
 
-            var invalidProductIds = orderIn.Details.Select(x => x.ProductId).Except(validProductsIds);
+            var invalidProductIds = orderIn.Details.Select(x => x.ProductId.Value).Except(validProductsIds);
             if (invalidProductIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidProductIds);
@@ -38,7 +49,7 @@ namespace GeekShop.Services
 
                 if (customer is null)
                 {
-                    throw new GeekShopNotFoundException($"Invalid customerId: {orderIn.CustomerId}.");
+                    throw new GeekShopNotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
                 }
 
                 orderIn.CustomerName = customer.Name;
@@ -66,17 +77,17 @@ namespace GeekShop.Services
             var order = await _orderRepository.Get(id);
             if (order is null)
             {
-                throw new GeekShopNotFoundException($"Invalid order id {id}");
+                throw new GeekShopNotFoundException($"Invalid order id {id}.");
             }
             await _orderRepository.Delete(id);
         }
 
-        public async Task<Order?> Get(int id)
+        public async Task<Order> Get(int id)
         {
             var order = await _orderRepository.Get(id);
             if (order is null)
             {
-                throw new GeekShopNotFoundException($"Invalid order id {id}");
+                throw new GeekShopNotFoundException($"Invalid order id {id}.");
             }
             return order;
         }
@@ -90,7 +101,7 @@ namespace GeekShop.Services
         {
             if(await _orderRepository.Get(id) is null)
             {
-                throw new GeekShopNotFoundException($"Invalid order id: {id}");
+                throw new GeekShopNotFoundException($"Invalid order id: {id}.");
             }
             var validProducts = await _productRepository.GetByIds(orderIn.Details.Select(x => x.ProductId));
             var validProductsIds = validProducts.Select(x => x.Id);
@@ -99,7 +110,7 @@ namespace GeekShop.Services
             if (invalidProductIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidProductIds);
-                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}");
+                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}.");
             }
 
             if (orderIn.CustomerId is not null)
@@ -132,7 +143,7 @@ namespace GeekShop.Services
             await _orderRepository.Update(order);
         }
 
-        public async Task<IEnumerable<Order?>> GetByIds(IEnumerable<int> ids)
+        public async Task<IEnumerable<Order?>> GetByIds(IEnumerable<int>? ids)
         {
             ids = ids.Distinct();
             var orders = await _orderRepository.GetByIds(ids);
@@ -140,7 +151,7 @@ namespace GeekShop.Services
             if (invalidIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidIds);
-                throw new GeekShopNotFoundException($"Invalid order ids: {unfoundIds}");
+                throw new GeekShopNotFoundException($"Invalid order ids: {unfoundIds}.");
             }
             return orders;
         }

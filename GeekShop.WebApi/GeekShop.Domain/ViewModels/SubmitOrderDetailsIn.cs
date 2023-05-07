@@ -8,7 +8,7 @@ namespace GeekShop.Domain.ViewModels
 {
     public class SubmitOrderDetailsIn
     {
-        public int ProductId { get; set; }
-        public int ProductQuantity { get; set; }
+        public int? ProductId { get; set; }
+        public int? ProductQuantity { get; set; }
     }
 }

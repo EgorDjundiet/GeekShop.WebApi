@@ -6,6 +6,7 @@
         public string? CustomerName { get; set; }
         public string? CustomerAddress { get; set; }
         public string? PhoneNumber { get; set; }
-        public List<SubmitOrderDetailsIn> Details { get; set; } = new List<SubmitOrderDetailsIn>();        
+        public string? Email { get; set; }
+        public List<SubmitOrderDetailsIn>? Details { get; set; }        
     }
 }
