@@ -4,13 +4,6 @@ using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace GeekShop.Services
 {
     

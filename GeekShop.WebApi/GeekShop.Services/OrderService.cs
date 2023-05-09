@@ -1,7 +1,6 @@
 ﻿using FluentValidation;
 using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
-using GeekShop.Domain.Validators;
 using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;

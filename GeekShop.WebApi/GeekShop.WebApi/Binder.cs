@@ -3,7 +3,6 @@ using GeekShop.Repositories;
 using GeekShop.Services.Contracts;
 using GeekShop.Services;
 using FluentValidation;
-using GeekShop.Domain.Validators;
 using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contexts;
 
