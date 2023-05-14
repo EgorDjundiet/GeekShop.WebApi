@@ -10,11 +10,11 @@
     }
     public class Payment
     {
-        int Id { get; set; }
-        CardDetails CardDetails { get; set; } = new CardDetails();
-        decimal Amount { get; set; }
-        PaymentStatus Status { get; set; }
-        int OrderId { get; set; }
-        Address BillingAddress { get; set; } = new Address();
+        public int Id { get; set; }
+        public CardDetails CardDetails { get; set; } = new CardDetails();
+        public decimal Amount { get; set; }
+        public PaymentStatus Status { get; set; }
+        public int OrderId { get; set; }
+        public Address BillingAddress { get; set; } = new Address();
     }     
 }

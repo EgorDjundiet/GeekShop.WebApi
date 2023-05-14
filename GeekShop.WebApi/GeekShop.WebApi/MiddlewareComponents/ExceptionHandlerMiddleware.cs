@@ -31,6 +31,12 @@ namespace GeekShop.WebApi.MiddlewareComponents
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync(JsonConvert.SerializeObject(new { Message = ex.Message }));
             }
+            catch(GeekShopException ex)
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(JsonConvert.SerializeObject(new { Message = ex.Message }));
+            }
         }
     }
 }

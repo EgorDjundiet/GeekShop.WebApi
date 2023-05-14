@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GeekShop.Domain.Exceptions
 {
-    public class GeekShopNotFoundException : Exception
+    public class GeekShopNotFoundException : GeekShopException
     {
         public GeekShopNotFoundException(string message) : base(message)
         {

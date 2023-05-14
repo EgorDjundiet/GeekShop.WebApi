@@ -19,7 +19,7 @@ namespace GeekShop.Domain.ViewModels
                 .NotEmpty().WithMessage("Details are required");
 
             RuleForEach(order => order.Details)
-                .SetValidator(details => orderDetailsValidator);
+                .SetValidator(order => orderDetailsValidator);
 
             When(order => order.CustomerId is null, () =>
             {

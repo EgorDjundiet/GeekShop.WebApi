@@ -2,9 +2,10 @@
 {
     public class CardDetails
     {
-        string NameOnCard { get; set; } = string.Empty;
-        string AccountNumber { get; set; } = string.Empty;
-        DateTime ExpDate { get; set; }  // month and year (Date should be last day of month)
-        string? Cvv { get; set; }
+        public int Id { get; set; }
+        public string NameOnCard { get; set; } = string.Empty;
+        public string AccountNumber { get; set; } = string.Empty;
+        public DateTime ExpDate { get; set; }  // month and year (Date should be last day of month)
+        public string? Cvv { get; set; }
     }
 }

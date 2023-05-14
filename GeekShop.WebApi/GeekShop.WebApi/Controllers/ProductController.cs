@@ -1,9 +1,7 @@
 ﻿using GeekShop.Domain;
 using GeekShop.Domain.ViewModels;
-using GeekShop.Services;
 using GeekShop.Services.Contracts;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections;
 
 namespace GeekShop.WebApi.Controllers
 {
