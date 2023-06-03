@@ -40,7 +40,7 @@ namespace GeekShop.WebApi.Controllers
         }
       
         [HttpPut("Update")]
-        public async Task Update(int id, [FromBody]SubmitPaymentIn payment)
+        public async Task Update(int id, [FromBody]SubmitPaymentIn payment) // Change model to Payment
         {
             await _paymentService.Update(id, payment);
         }

@@ -6,14 +6,14 @@ namespace GeekShop.Domain.ViewModels
     {
         public int? CustomerId { get; set; }
         public string? CustomerName { get; set; }
-        public string? CustomerAddress { get; set; }
+        public SubmitAddressIn? CustomerAddress { get; set; }
         public string? PhoneNumber { get; set; }
         public string? Email { get; set; }
         public List<SubmitOrderDetailsIn>? Details { get; set; }        
     }
     public class SumbitOrderInValidator : AbstractValidator<SubmitOrderIn>
     {
-        public SumbitOrderInValidator(AbstractValidator<SubmitOrderDetailsIn> orderDetailsValidator)
+        public SumbitOrderInValidator(AbstractValidator<SubmitOrderDetailsIn> orderDetailsValidator, AbstractValidator<SubmitAddressIn?> addressValidator)
         {
             RuleFor(order => order.Details)
                 .NotEmpty().WithMessage("Details are required");
@@ -27,7 +27,8 @@ namespace GeekShop.Domain.ViewModels
                     .NotEmpty().WithMessage("Customer name is required.");
 
                 RuleFor(order => order.CustomerAddress)
-                    .NotEmpty().WithMessage("Customer address is required.");
+                    .NotEmpty().WithMessage("Customer address is required.")
+                    .SetValidator(order => addressValidator);
 
                 RuleFor(order => order.PhoneNumber)
                     .Matches(@"^\+(?:[0-9]●?){6,14}[0-9]$").WithMessage("Invalid phone number format.");

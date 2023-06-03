@@ -1,9 +1,9 @@
 ﻿using GeekShop.Domain;
 using System.Data;
 using Dapper;
-using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
+using GeekShop.Domain.Exceptions;
 
 namespace GeekShop.Repositories
 {
@@ -19,18 +19,26 @@ namespace GeekShop.Repositories
             var query = @"
                 INSERT INTO Products
                 (Title, Author, Description, Price)
-                Values 
+                VALUES 
                 (@Title, @Author, @Description, @Price)";
 
             using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync(query,new 
+                try
                 {
-                    Title = product.Title, 
-                    Author = product.Author, 
-                    Description = product.Description,
-                    Price = product.Price
-                });
+                    await connection.QueryAsync(query, new
+                    {
+                        Title = product.Title,
+                        Author = product.Author,
+                        Description = product.Description,
+                        Price = product.Price
+                    });
+                }
+                catch 
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }
+                
             }
         }
 
@@ -42,7 +50,14 @@ namespace GeekShop.Repositories
 
             using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync(query, new { Id = id});
+                try
+                {
+                    await connection.QueryAsync(query, new { Id = id});
+                }
+                catch
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }
             }
         }
 
@@ -59,8 +74,15 @@ namespace GeekShop.Repositories
                 WHERE Id = @Id";
 
             using (IDbConnection connection = _context.CreateConnection())
-            { 
-                return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id});
+            {
+                try
+                {
+                    return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id });
+                }
+                catch 
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }               
             }
         }
 
@@ -78,7 +100,14 @@ namespace GeekShop.Repositories
     
             using (IDbConnection connection = _context.CreateConnection())
             {
-                return await connection.QueryAsync<Product>(query, new { Ids = ids.ToArray() });               
+                try
+                {
+                    return await connection.QueryAsync<Product>(query, new { Ids = ids.ToArray() });
+                }
+                catch
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }
             }
 
         }
@@ -91,13 +120,21 @@ namespace GeekShop.Repositories
 
             using (IDbConnection connection = _context.CreateConnection())
             {
-                await connection.QueryAsync(query, new { 
-                    Id = product.Id, 
-                    Title = product.Title, 
-                    Author = product.Author, 
-                    Description = product.Description, 
-                    Price = product.Price
-                });
+                try
+                {
+                    await connection.QueryAsync(query, new
+                    {
+                        Id = product.Id,
+                        Title = product.Title,
+                        Author = product.Author,
+                        Description = product.Description,
+                        Price = product.Price
+                    });
+                }
+                catch
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }        
             }
         }
 
@@ -112,10 +149,16 @@ namespace GeekShop.Repositories
                 Price
                 FROM Products";
 
-
             using (IDbConnection connection = _context.CreateConnection())
             {
-                return await connection.QueryAsync<Product>(query);
+                try
+                {
+                    return await connection.QueryAsync<Product>(query);
+                }
+                catch
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }
             }
         }        
     }

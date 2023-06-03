@@ -11,5 +11,6 @@ namespace GeekShop.Services.Contracts
         Task<IEnumerable<Order>> GetByIds(IEnumerable<int> ids);
         Task Delete(int id);
         Task Update(int id, SubmitOrderIn orderIn);
+        Task ChangeStatus(int id, OrderStatus status);
     }
 }

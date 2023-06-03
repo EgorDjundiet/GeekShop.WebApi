@@ -42,7 +42,7 @@ namespace GeekShop.WebApi.Controllers
         [HttpDelete("Delete")]
         public async Task Delete(int id)
         {
-            await _productService.Get(id);
+            await _productService.Delete(id);
         }
 
         [HttpPut("Update")]

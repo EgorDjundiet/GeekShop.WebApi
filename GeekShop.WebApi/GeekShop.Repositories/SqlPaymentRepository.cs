@@ -3,6 +3,7 @@ using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
 using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
+using System.Transactions;
 
 namespace GeekShop.Repositories
 {
@@ -18,23 +19,24 @@ namespace GeekShop.Repositories
             using (var connection = _context.CreateConnection())
             {
                 var sql = @"
-                    SELECT p.Id, p.Status, p.Amount, p.OrderId,
-                           c.Id, c.NameOnCard, c.AccountNumber, c.ExpDate, c.Cvv,
+                    SELECT p.Id, p.Status, p.Amount, p.OrderId, p.AccountNumber,
                            a.Id, a.Street, a.City, a.State, a.ZipCode, a.Country
                     FROM Payments as p
-                    LEFT JOIN Cards as c ON p.CardId = c.Id
                     LEFT JOIN Addresses as a on p.BillingAddressId = a.Id
                     WHERE p.Id = @Id
                 ";
-                var paymentDict = new Dictionary<int, Payment>();
-                await connection.QueryAsync<Payment,CardDetails,Address,Payment>(sql,(payment, cardDetails, address) =>
+                try
                 {
-                    payment.CardDetails = cardDetails;
-                    payment.BillingAddress = address;
-                    paymentDict.Add(payment.Id, payment);
-                    return payment;
-                }, new { Id = id});
-                return paymentDict.Values.SingleOrDefault();
+                    return (await connection.QueryAsync<Payment, Address, Payment>(sql, (payment, address) =>
+                    {
+                        payment.BillingAddress = address;
+                        return payment;
+                    }, new { Id = id })).SingleOrDefault();
+                }
+                catch 
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }                
             }
         }
 
@@ -43,22 +45,25 @@ namespace GeekShop.Repositories
             using (var connection = _context.CreateConnection())
             {
                 var sql = @"
-                    SELECT p.Id, p.Status, p.Amount, p.OrderId,
-                           c.Id, c.NameOnCard, c.AccountNumber, c.ExpDate, c.Cvv,
+                    SELECT p.Id, p.Status, p.Amount, p.OrderId, p.AccountNumber,
                            a.Id, a.Street, a.City, a.State, a.ZipCode, a.Country
                     FROM Payments as p
-                    LEFT JOIN Cards as c ON p.CardId = c.Id
                     LEFT JOIN Addresses as a on p.BillingAddressId = a.Id
                 ";
-                var paymentDict = new Dictionary<int,Payment>();
-                await connection.QueryAsync<Payment, CardDetails, Address, Payment>(sql, (payment, cardDetails, address) =>
+
+                try
                 {
-                    payment.CardDetails = cardDetails;
-                    payment.BillingAddress = address;
-                    paymentDict.Add(payment.Id, payment);
-                    return payment;
-                });
-                return paymentDict.Values;
+                    return (await connection.QueryAsync<Payment, Address, Payment>(sql, (payment, address) =>
+                    {
+                        payment.BillingAddress = address;
+                        return payment;
+                    }));
+                }
+                catch
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }
+               
             }
         }
 
@@ -67,23 +72,25 @@ namespace GeekShop.Repositories
             using (var connection = _context.CreateConnection())
             {
                 var sql = @"
-                    SELECT p.Id, p.Status, p.Amount, p.OrderId,
-                           c.Id, c.NameOnCard, c.AccountNumber, c.ExpDate, c.Cvv,
+                    SELECT p.Id, p.Status, p.Amount, p.OrderId, p.AccountNumber,
                            a.Id, a.Street, a.City, a.State, a.ZipCode, a.Country
                     FROM Payments as p
-                    LEFT JOIN Cards as c ON p.CardId = c.Id
                     LEFT JOIN Addresses as a on p.BillingAddressId = a.Id
-                    WHERE p.Id in @Ids
+                    WHERE p.Id IN @Ids
                 ";
-                var paymentDict = new Dictionary<int,Payment>();
-                await connection.QueryAsync<Payment, CardDetails, Address, Payment>(sql, (payment, cardDetails, address) =>
+
+                try
                 {
-                    payment.CardDetails = cardDetails;
-                    payment.BillingAddress = address;
-                    paymentDict.Add(payment.Id, payment);
-                    return payment;
-                }, new {Ids = ids.ToArray()});
-                return paymentDict.Values;
+                    return (await connection.QueryAsync<Payment, Address, Payment>(sql, (payment, address) =>
+                    {
+                        payment.BillingAddress = address;
+                        return payment;
+                    }, new { Ids = ids.ToArray() }));
+                }
+                catch
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }                
             }
         }
 
@@ -91,127 +98,82 @@ namespace GeekShop.Repositories
         {
             using (var connection = _context.CreateConnection())
             {
-                connection.Open();
-                
-                var sqlPayment = @"
-                    INSERT INTO Payments
-                    (CardId, OrderId, BillingAddressId, Status, Amount)
-                    VALUES(@CardId, @OrderId, @BillingAddressId, @Status, @Amount)";
+                var sql = @"
+                    BEGIN TRAN
+                        INSERT INTO Addresses
+                        (Street, City, State, ZipCode, Country)
+                        VALUES(@Street, @City, @State, @ZipCode, @Country)
+                        
+                        DECLARE @AddressIdVariable INT 
+                        SELECT @AddressIdVariable = SCOPE_IDENTITY()
 
-                var sqlCard = @"
-                    INSERT INTO Cards
-                    (NameOnCard, AccountNumber, ExpDate, Cvv)
-                    VALUES(@NameOnCard, @AccountNumber, @ExpDate, @Cvv)
-                    SELECT SCOPE_IDENTITY()";
+                        INSERT INTO Payments
+                        (AccountNumber, OrderId, BillingAddressId, Status, Amount)
+                        VALUES(@AccountNumber, @OrderId, @AddressIdVariable, @Status, @Amount)                                               
+                    COMMIT TRAN
+                ";
 
-                var sqlAddress = @"
-                    INSERT INTO Addresses
-                    (Street, City, State, ZipCode, Country)
-                    VALUES(@Street, @City, @State, @ZipCode, @Country)
-                    SELECT SCOPE_IDENTITY()";
+                var parameters = new DynamicParameters();
+                parameters.Add("Street", payment.BillingAddress.Street);
+                parameters.Add("City", payment.BillingAddress.City);
+                parameters.Add("State", payment.BillingAddress.State);
+                parameters.Add("ZipCode", payment.BillingAddress.ZipCode);
+                parameters.Add("Country", payment.BillingAddress.Country);
+                parameters.Add("AccountNumber", payment.AccountNumber);
+                parameters.Add("OrderId", payment.OrderId);
+                parameters.Add("Status", payment.Status.ToString());
+                parameters.Add("Amount", payment.Amount);
 
-                using (var transaction = connection.BeginTransaction())
+                try
                 {
-                    try
-                    {
-                        //Card param
-                        var parameters = new DynamicParameters();
-                        parameters.Add("NameOnCard", payment.CardDetails.NameOnCard);
-                        parameters.Add("AccountNumber", payment.CardDetails.AccountNumber);
-                        parameters.Add("ExpDate", payment.CardDetails.ExpDate);
-                        parameters.Add("Cvv", payment.CardDetails.Cvv);
-                        var cardId = await connection.QueryFirstAsync<int>(sqlCard, parameters, transaction: transaction);
-
-                        //Address param
-                        parameters = new DynamicParameters();
-                        parameters.Add("Street", payment.BillingAddress.Street);
-                        parameters.Add("City", payment.BillingAddress.City);
-                        parameters.Add("State", payment.BillingAddress.State);
-                        parameters.Add("ZipCode", payment.BillingAddress.ZipCode);
-                        parameters.Add("Country", payment.BillingAddress.Country);
-                        var addressId = await connection.QueryFirstAsync<int>(sqlAddress, parameters, transaction: transaction);
-
-                        //Payment param
-                        parameters = new DynamicParameters();
-                        parameters.Add("CardId", cardId);
-                        parameters.Add("OrderId", payment.OrderId);
-                        parameters.Add("BillingAddressId", addressId);
-                        parameters.Add("Status", payment.Status.ToString());
-                        parameters.Add("Amount", payment.Amount);
-                        await connection.QueryAsync(sqlPayment,parameters,transaction:transaction);
-
-                        transaction.Commit();
-                    }
-                    catch(Exception ex) 
-                    {
-                        transaction.Rollback();
-                        throw new GeekShopException(ex.Message);
-                    }
+                    await connection.QueryAsync(sql, parameters);
                 }
-                    
+                catch
+                {                   
+                    throw new GeekShopDatabaseException("Problems with database");
+                }
+                                   
             }
-
         }
 
         public async Task Update(Payment payment)
         {
             using (var connection = _context.CreateConnection())
             {
-                connection.Open();               
+                var sql = @"
+                    BEGIN TRAN
+                        UPDATE Payments
+                        SET OrderId = @OrderId, Status = @Status, Amount = @Amount, AccountNumber = @AccountNumber
+                        WHERE Id = @Id
 
-                var updatePayment = @"
-                    UPDATE Payments
-                    SET OrderId = @OrderId, Status = @Status, Amount = @Amount
-                    WHERE Id = @Id";
+                        DECLARE @AddressIdVariable INT 
+                        SELECT @AddressIdVariable = BillingAddressId FROM Payments WHERE Id = @Id
 
-                var updateCard = @"
-                    UPDATE Cards
-                    SET NameOnCard = @NameOnCard, AccountNumber = @AccountNumber, ExpDate = @ExpDate, Cvv = @Cvv
-                    WHERE Id = @Id";
+                        UPDATE Addresses
+                        SET Street = @Street, City = @City, State = @State, ZipCode = @ZipCode, Country = @Country
+                        WHERE Id = @AddressIdVariable                        
+                    COMMIT TRAN
+                ";
 
-                var updateAddress = @"
-                    UPDATE Addresses
-                    SET Street = @Street, City = @City, State = @State, ZipCode = @ZipCode, Country = @Country
-                    WHERE Id = @Id";
+                var parameters = new DynamicParameters();
+                parameters.Add("Id", payment.Id);
+                parameters.Add("OrderId", payment.OrderId);
+                parameters.Add("Status", payment.Status.ToString());
+                parameters.Add("Amount", payment.Amount);
+                parameters.Add("AccountNumber", payment.AccountNumber);
+                parameters.Add("Street", payment.BillingAddress.Street);
+                parameters.Add("City", payment.BillingAddress.City);
+                parameters.Add("State", payment.BillingAddress.State);
+                parameters.Add("ZipCode", payment.BillingAddress.ZipCode);
+                parameters.Add("Country", payment.BillingAddress.Country);
 
-                using (var transaction = connection.BeginTransaction())
+                try
+                {                                       
+                    await connection.QueryAsync(sql, parameters);                
+                }
+                catch 
                 {
-                    try
-                    {
-                        //Card param
-                        var parameters = new DynamicParameters();                       
-                        parameters.Add("Id", payment.CardDetails.Id);
-                        parameters.Add("NameOnCard", payment.CardDetails.NameOnCard);
-                        parameters.Add("AccountNumber", payment.CardDetails.AccountNumber);
-                        parameters.Add("ExpDate", payment.CardDetails.ExpDate);
-                        parameters.Add("Cvv", payment.CardDetails.Cvv);
-                        await connection.QueryAsync(updateCard, parameters, transaction: transaction);
-
-                        //Address param
-                        parameters = new DynamicParameters();
-                        parameters.Add("Id", payment.BillingAddress.Id);
-                        parameters.Add("Street", payment.BillingAddress.Street);
-                        parameters.Add("City", payment.BillingAddress.City);
-                        parameters.Add("State", payment.BillingAddress.State);
-                        parameters.Add("ZipCode", payment.BillingAddress.ZipCode);
-                        parameters.Add("Country", payment.BillingAddress.Country);                       
-                        await connection.QueryAsync(updateAddress, parameters, transaction: transaction);
-
-                        //Payment param
-                        parameters = new DynamicParameters();
-                        parameters.Add("Id", payment.Id);
-                        parameters.Add("OrderId",payment.OrderId);
-                        parameters.Add("Status", payment.Status.ToString());
-                        parameters.Add("Amount", payment.Amount);
-                        await connection.QueryAsync(updatePayment, parameters, transaction: transaction);
-
-                        transaction.Commit();
-                    }
-                    catch (Exception ex)
-                    {
-                        transaction.Rollback();
-                        throw new GeekShopException(ex.Message);
-                    }
+                    throw new GeekShopDatabaseException("Problems with database");
                 }
             }
         }
@@ -222,11 +184,19 @@ namespace GeekShop.Repositories
             {
                 var payment = await Get(id);
                 var sql = @"
-                DELETE FROM Payments WHERE Id = @p_Id
-                DELETE FROM Cards WHERE Id = @c_Id
-                DELETE FROM Addresses WHERE Id = @a_Id";
-                
-                await connection.QueryAsync(sql, new { c_id = payment!.CardDetails.Id, a_id = payment!.BillingAddress.Id, p_id = id});
+                BEGIN TRAN
+                    DELETE FROM Payments WHERE Id = @p_Id
+                    DELETE FROM Addresses WHERE Id = @a_Id
+                COMMIT TRAN";
+
+                try
+                {
+                    await connection.QueryAsync(sql, new {a_Id = payment!.BillingAddress.Id, p_Id = id});
+                }
+                catch
+                {
+                    throw new GeekShopDatabaseException("Problems with database");
+                }
             }             
         }  
     }

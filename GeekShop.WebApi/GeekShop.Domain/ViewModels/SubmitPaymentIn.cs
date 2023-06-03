@@ -12,9 +12,9 @@ namespace GeekShop.Domain.ViewModels
     }
     public class SubmitPaymentInValidator : AbstractValidator<SubmitPaymentIn>
     {
-        public SubmitPaymentInValidator(AbstractValidator<SubmitCardDetailsIn> submitCardDetailsInValidator, AbstractValidator<SubmitAddressIn> submitAddressInValidator)
+        public SubmitPaymentInValidator(AbstractValidator<SubmitCardDetailsIn?> submitCardDetailsInValidator, AbstractValidator<SubmitAddressIn?> submitAddressInValidator)
         {
-            RuleFor(payment => payment.CardDetails!)
+            RuleFor(payment => payment.CardDetails)
                 .NotEmpty().WithMessage("Card details are required")
                 .SetValidator(payment => submitCardDetailsInValidator);
 
@@ -26,7 +26,7 @@ namespace GeekShop.Domain.ViewModels
                 .NotEmpty().WithMessage("Order id is required")
                 .GreaterThanOrEqualTo(1).WithMessage("Invalid order id");
 
-            RuleFor(payment => payment.BillingAddress!)
+            RuleFor(payment => payment.BillingAddress)
                 .NotEmpty().WithMessage("Billing address is required")
                 .SetValidator(payment => submitAddressInValidator);
         }

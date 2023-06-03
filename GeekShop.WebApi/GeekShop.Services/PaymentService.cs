@@ -4,6 +4,7 @@ using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
+using System.Transactions;
 
 namespace GeekShop.Services
 {
@@ -58,15 +59,10 @@ namespace GeekShop.Services
 
             var expDate = paymentIn.CardDetails!.ExpDate!.Value;
             expDate = expDate.AddDays(DateTime.DaysInMonth(expDate.Year, expDate.Month) - expDate.Day);
+            var accountNumber = new string('*',12) + paymentIn.CardDetails.AccountNumber!.Substring(12);
             var payment = new Payment()
-            {
-                CardDetails = new CardDetails()
-                {
-                    NameOnCard = paymentIn.CardDetails!.NameOnCard!,
-                    AccountNumber = paymentIn.CardDetails.AccountNumber!,
-                    ExpDate = expDate,
-                    Cvv = paymentIn.CardDetails.Cvv
-                },
+            {   
+                AccountNumber = accountNumber,
                 Amount = paymentIn.Amount!.Value,
                 Status = PaymentStatus.Submitted,
                 OrderId = paymentIn.OrderId.Value,
@@ -79,7 +75,15 @@ namespace GeekShop.Services
                     Country = paymentIn.BillingAddress!.Country!
                 }
             };
-            await _paymentRepository.Add(payment);
+
+            var order = await _orderService.Get(payment.OrderId);
+
+            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                await _paymentRepository.Add(payment);
+                await _orderService.ChangeStatus(order.Id, OrderStatus.PendingPayment);               
+                transactionScope.Complete();
+            }                                                         
         }
 
         public async Task Update(int id, SubmitPaymentIn paymentIn)
@@ -90,8 +94,8 @@ namespace GeekShop.Services
                 throw new GeekShopValidationException(result.ToString());
             }
 
-            var paymentGotById = await _paymentRepository.Get(id);
-            if (paymentGotById is null)
+            var payment = await _paymentRepository.Get(id);
+            if (payment is null)
             {
                 throw new GeekShopNotFoundException($"Invalid payment id: {id}");
             }
@@ -100,30 +104,19 @@ namespace GeekShop.Services
 
             var expDate = paymentIn.CardDetails!.ExpDate!.Value;
             expDate = expDate.AddDays(DateTime.DaysInMonth(expDate.Year, expDate.Month) - expDate.Day);
-            var payment = new Payment()
+            var accountNumber = new string('*', 12) + paymentIn.CardDetails.AccountNumber!.Substring(12);
+            payment.AccountNumber = accountNumber;
+            payment.Amount = paymentIn.Amount!.Value;
+            payment.Status = PaymentStatus.Submitted;
+            payment.OrderId = paymentIn.OrderId.Value;
+            payment.BillingAddress = new Address()
             {
-                Id = id,
-                CardDetails = new CardDetails()
-                {
-                    Id = paymentGotById.CardDetails.Id,
-                    NameOnCard = paymentIn.CardDetails!.NameOnCard!,
-                    AccountNumber = paymentIn.CardDetails!.AccountNumber!,
-                    ExpDate = expDate,
-                    Cvv = paymentIn.CardDetails!.Cvv!
-                },
-                Amount = paymentIn.Amount!.Value,
-                Status = PaymentStatus.Submitted,
-                OrderId = paymentIn.OrderId.Value,
-                BillingAddress = new Address()
-                {
-                    Id = paymentGotById.BillingAddress.Id,
-                    Street = paymentIn.BillingAddress!.Street!,
-                    City = paymentIn.BillingAddress!.City!,
-                    State = paymentIn.BillingAddress!.State!,
-                    ZipCode = paymentIn.BillingAddress!.ZipCode!,
-                    Country = paymentIn.BillingAddress!.Country!
-                }
-            };
+                Street = paymentIn.BillingAddress!.Street!,
+                City = paymentIn.BillingAddress!.City!,
+                State = paymentIn.BillingAddress!.State!,
+                ZipCode = paymentIn.BillingAddress!.ZipCode!,
+                Country = paymentIn.BillingAddress!.Country!
+            };           
             await _paymentRepository.Update(payment);
         }
 

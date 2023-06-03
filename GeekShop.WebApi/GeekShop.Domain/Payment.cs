@@ -11,7 +11,7 @@
     public class Payment
     {
         public int Id { get; set; }
-        public CardDetails CardDetails { get; set; } = new CardDetails();
+        public string AccountNumber {get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public PaymentStatus Status { get; set; }
         public int OrderId { get; set; }

@@ -20,6 +20,9 @@ namespace GeekShop.Domain.ViewModels
                 .NotEmpty().WithMessage("Account number is required")
                 .Matches(@"^\d{4}\s?\d{4}\s?\d{4}\s?\d{4}$").WithMessage("Invalid account number");
 
+            RuleFor(card => card.ExpDate)
+                .NotEmpty().WithMessage("ExpDate is required");
+
             RuleFor(card => card.Cvv)               
                 .Must(cvv => cvv is null || int.TryParse(cvv, out int result)).WithMessage("Invalid cvv");
         }

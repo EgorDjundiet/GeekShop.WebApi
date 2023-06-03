@@ -24,7 +24,20 @@ namespace GeekShop.Services
                 throw new GeekShopValidationException(result.ToString());
             }
 
-            var customer = new Customer() { Name = customerIn.Name!, Address = customerIn.Address!, PhoneNumber = customerIn.PhoneNumber, Email = customerIn.Email };            
+            var customer = new Customer() 
+            { 
+                Name = customerIn.Name!, 
+                Address = new Address()
+                {
+                    Street = customerIn.Address!.Street!,
+                    City = customerIn.Address!.City!,
+                    State = customerIn.Address!.State!,
+                    ZipCode = customerIn.Address!.ZipCode!,
+                    Country = customerIn.Address!.Country!
+                },
+                PhoneNumber = customerIn.PhoneNumber,
+                Email = customerIn.Email 
+            };            
             await _customerRepository.Add(customer);
         }
 
@@ -81,7 +94,14 @@ namespace GeekShop.Services
             }
 
             customer.Name = customerIn.Name!;
-            customer.Address = customerIn.Address!;
+            customer.Address = new Address() 
+            { 
+                Street = customerIn.Address!.Street!,
+                City = customerIn.Address!.City!,
+                State = customerIn.Address!.State!,                
+                ZipCode = customerIn.Address!.ZipCode!,
+                Country = customerIn.Address!.Country!
+            };
             customer.PhoneNumber = customerIn.PhoneNumber;
             customer.Email = customerIn.Email;           
             await _customerRepository.Update(customer);
