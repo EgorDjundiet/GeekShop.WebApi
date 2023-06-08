@@ -14,25 +14,27 @@ namespace GeekShop.Repositories
         {
             _context = context; 
         }
-        public async Task Add(Product product)
+        public async Task<Product> Add(Product product)
         {
             var query = @"
                 INSERT INTO Products
                 (Title, Author, Description, Price)
                 VALUES 
-                (@Title, @Author, @Description, @Price)";
+                (@Title, @Author, @Description, @Price)
+                SELECT SCOPE_IDENTITY();";
 
             using (IDbConnection connection = _context.CreateConnection())
             {
                 try
                 {
-                    await connection.QueryAsync(query, new
+                    product.Id = await connection.QuerySingleAsync<int>(query, new
                     {
                         Title = product.Title,
                         Author = product.Author,
                         Description = product.Description,
                         Price = product.Price
                     });
+                    return (await Get(product.Id))!;
                 }
                 catch 
                 {

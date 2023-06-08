@@ -14,7 +14,11 @@ namespace GeekShop.WebApi.Controllers
         {
             _paymentService = paymentService;
         }
-
+        [HttpGet("SeedData")]
+        public async Task SeedData()
+        {
+            await _paymentService.SeedData();
+        }
         [HttpGet("GetAll")]
         public async Task<IEnumerable<Payment>> GetAll()
         {
@@ -34,13 +38,13 @@ namespace GeekShop.WebApi.Controllers
         }
 
         [HttpPost("Add")]
-        public async Task Add([FromBody]SubmitPaymentIn payment)
+        public async Task<Payment> Add([FromBody]SubmitPaymentIn payment)
         {
-            await _paymentService.Add(payment);
+            return await _paymentService.Add(payment);
         }
       
         [HttpPut("Update")]
-        public async Task Update(int id, [FromBody]SubmitPaymentIn payment) // Change model to Payment
+        public async Task Update(int id, [FromBody]SubmitPaymentIn payment)
         {
             await _paymentService.Update(id, payment);
         }

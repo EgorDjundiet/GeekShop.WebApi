@@ -4,6 +4,7 @@ using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
+using System.Transactions;
 
 namespace GeekShop.Services
 {
@@ -17,7 +18,7 @@ namespace GeekShop.Services
             _productValidator = productValidator;
         }
 
-        public async Task Add(SubmitProductIn productIn)
+        public async Task<Product> Add(SubmitProductIn productIn)
         {
             var result = _productValidator.Validate(productIn);
             if (!result.IsValid)
@@ -26,7 +27,7 @@ namespace GeekShop.Services
             }
 
             var product = new Product() { Title = productIn.Title!, Author = productIn.Author!, Description = productIn.Description, Price = productIn.Price!.Value};
-            await _productRepository.Add(product);
+            return await _productRepository.Add(product);
         }
 
         public async Task Delete(int id)
@@ -65,6 +66,55 @@ namespace GeekShop.Services
                 throw new GeekShopNotFoundException($"Invalid product ids {unfoundIds}");
             }
             return await _productRepository.GetByIds(ids);
+        }
+        public async Task SeedData()
+        {
+            var products = new List<SubmitProductIn>()
+            {
+                new SubmitProductIn
+                { 
+                    Title = "Harry Potter And The Philosopher's Stone",
+                    Author = "J.K.Rowling",
+                    Description = "The story of the boy who lived",
+                    Price = 13
+                },
+                new SubmitProductIn
+                {
+                    Title = "To Kill a Mockingbird",
+                    Author = "Harper Lee",
+                    Description = "A powerful story of racial injustice and moral growth in a small Southern town",
+                    Price = 20
+                },
+                new SubmitProductIn
+                {
+                    Title = "1984",
+                    Author = "George Orwell",
+                    Description = "A dystopian novel depicting a totalitarian society where Big Brother watches every move",
+                    Price = 7.99M
+                },
+                new SubmitProductIn
+                {
+                    Title = "The Catcher in the Rye",
+                    Author = "J.D.Salinger",
+                    Description = "A coming-of-age novel following a disillusioned teenager's journey through New York City",
+                    Price = 17
+                },
+                new SubmitProductIn
+                {
+                    Title = "To the Lighthouse",
+                    Author = "Virginia Woolf",
+                    Description = "A stream-of-consciousness novel exploring the intricacies of human emotions and relationships",
+                    Price = 10
+                }
+            };
+            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                foreach (var product in products)
+                {
+                    await Add(product);
+                }
+                transactionScope.Complete();
+            }
         }
 
         public async Task Update(int id, SubmitProductIn productIn)

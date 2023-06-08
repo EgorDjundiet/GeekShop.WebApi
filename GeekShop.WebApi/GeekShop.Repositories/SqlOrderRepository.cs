@@ -18,7 +18,7 @@ namespace GeekShop.Repositories
             _context = context;
             _productRepository = repository;
         }
-        public async Task Add(Order order)
+        public async Task<Order> Add(Order order)
         {            
             using (IDbConnection connection = _context.CreateConnection())
             {               
@@ -72,6 +72,8 @@ namespace GeekShop.Repositories
                             await connection.QueryAsync(sqlOrderDetails, parameters, transaction:transaction);
                         }
                         transaction.Commit();
+
+                        return (await Get(orderId))!;
                     }
                     catch
                     {

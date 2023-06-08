@@ -5,7 +5,8 @@ namespace GeekShop.Services.Contracts
 {
     public interface ICustomerService
     {
-        Task Add(SubmitCustomerIn customer);
+        Task SeedData();
+        Task<Customer> Add(SubmitCustomerIn customer);
         Task Update(int id, SubmitCustomerIn customer);
         Task Delete(int id);
         Task<Customer> Get(int id);

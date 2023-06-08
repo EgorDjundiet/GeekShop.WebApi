@@ -4,6 +4,7 @@ using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
+using System.Transactions;
 
 namespace GeekShop.Services
 {
@@ -23,7 +24,7 @@ namespace GeekShop.Services
         }
 
 
-        public async Task Add(SubmitOrderIn orderIn)
+        public async Task<Order> Add(SubmitOrderIn orderIn)
         {
             if (orderIn.CustomerId is not null)
             {
@@ -94,7 +95,7 @@ namespace GeekShop.Services
                 Status = OrderStatus.Placed
             };
 
-            await _orderRepository.Add(order);
+            return await _orderRepository.Add(order);
         }
 
         public async Task Delete(int id)
@@ -214,6 +215,72 @@ namespace GeekShop.Services
                 throw new GeekShopNotFoundException($"Invalid order ids: {unfoundIds}.");
             }
             return orders;
+        }
+
+        public async Task SeedData()
+        {
+            var orders = new List<SubmitOrderIn>()
+            {
+                new SubmitOrderIn()
+                {
+                    CustomerId = 1,
+                    Details = new List<SubmitOrderDetailsIn>()
+                    {
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 1,
+                            ProductQuantity = 1
+                        },
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 2,
+                            ProductQuantity = 1
+                        }
+                    }
+                },
+                new SubmitOrderIn()
+                {
+                    CustomerId = 2,
+                    Details = new List<SubmitOrderDetailsIn>()
+                    {
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 3,
+                            ProductQuantity = 2
+                        },
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 1,
+                            ProductQuantity = 5
+                        }
+                    }
+                },
+                new SubmitOrderIn()
+                {
+                    CustomerId = 3,
+                    Details = new List<SubmitOrderDetailsIn>()
+                    {
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 5,
+                            ProductQuantity = 3
+                        },
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 2,
+                            ProductQuantity = 1
+                        }
+                    }
+                }
+            };
+            using(var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                foreach (var order in orders)
+                {
+                    await Add(order);
+                }
+                transactionScope.Complete();
+            }
         }
     }
 }

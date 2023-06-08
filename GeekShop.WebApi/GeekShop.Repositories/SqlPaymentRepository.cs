@@ -94,7 +94,7 @@ namespace GeekShop.Repositories
             }
         }
 
-        public async Task Add(Payment payment)
+        public async Task<Payment> Add(Payment payment)
         {
             using (var connection = _context.CreateConnection())
             {
@@ -109,7 +109,8 @@ namespace GeekShop.Repositories
 
                         INSERT INTO Payments
                         (AccountNumber, OrderId, BillingAddressId, Status, Amount)
-                        VALUES(@AccountNumber, @OrderId, @AddressIdVariable, @Status, @Amount)                                               
+                        VALUES(@AccountNumber, @OrderId, @AddressIdVariable, @Status, @Amount)
+                        SELECT SCOPE_IDENTITY();
                     COMMIT TRAN
                 ";
 
@@ -126,7 +127,8 @@ namespace GeekShop.Repositories
 
                 try
                 {
-                    await connection.QueryAsync(sql, parameters);
+                    payment.Id = await connection.QuerySingleAsync<int>(sql, parameters);
+                    return (await Get(payment.Id))!;
                 }
                 catch
                 {                   

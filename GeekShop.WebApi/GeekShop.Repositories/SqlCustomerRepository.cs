@@ -3,10 +3,7 @@ using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
 using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using System.Data;
-using System.Transactions;
 
 namespace GeekShop.Repositories
 {
@@ -17,7 +14,7 @@ namespace GeekShop.Repositories
         {
             _context = context;
         }
-        public async Task Add(Customer customer)
+        public async Task<Customer> Add(Customer customer)
         {           
             using(IDbConnection connection = _context.CreateConnection())
             {
@@ -33,6 +30,8 @@ namespace GeekShop.Repositories
                         INSERT INTO Customers
                         (Name, AddressId, PhoneNumber, Email)
                         VALUES(@Name,@AddressIdVariable,@PhoneNumber,@Email)
+                        SELECT SCOPE_IDENTITY();
+
                     COMMIT TRAN
                 ";
 
@@ -48,7 +47,8 @@ namespace GeekShop.Repositories
 
                 try
                 {                     
-                    await connection.QueryAsync(sql, dictParam);
+                    customer.Id = await connection.QuerySingleAsync<int>(sql, dictParam);
+                    return (await Get(customer.Id))!;
                 }
                 catch
                 {

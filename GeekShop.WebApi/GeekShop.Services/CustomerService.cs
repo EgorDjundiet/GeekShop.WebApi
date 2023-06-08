@@ -4,9 +4,10 @@ using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
+using System.Transactions;
+
 namespace GeekShop.Services
-{
-    
+{  
     public class CustomerService : ICustomerService
     {
         ICustomerRepository _customerRepository;
@@ -16,7 +17,63 @@ namespace GeekShop.Services
             _customerRepository = customerRepository;
             _customerValidator = customerValidator;
         }
-        public async Task Add(SubmitCustomerIn customerIn)
+        public async Task SeedData()
+        {
+            var customers = new List<SubmitCustomerIn>() 
+            { 
+                new SubmitCustomerIn() 
+                { 
+                    Name = "John Walker", 
+                    Address = new SubmitAddressIn 
+                    { 
+                        Street = "Privet",
+                        City = "London",
+                        State = "London",
+                        ZipCode = "24017",
+                        Country = "UK"
+                    },
+                    PhoneNumber = "+4477890345",
+                    Email = "JohnWalker@gmail.com"
+                },
+                new SubmitCustomerIn()
+                {
+                    Name = "Natalya Pushkin",
+                    Address = new SubmitAddressIn
+                    {
+                        Street = "Komsomolskaya",
+                        City = "Moscow",
+                        State = "Moscow",
+                        ZipCode = "46712",
+                        Country = "Russia"
+                    },
+                    PhoneNumber = "+777623908",
+                    Email = "NatalyaPushkin@gmail.com"
+                },
+                new SubmitCustomerIn()
+                {
+                    Name = "Aloys Ramstein",
+                    Address = new SubmitAddressIn
+                    {
+                        Street = "Oderbergerstrasse",
+                        City = "Berlin",
+                        State = "Berlin",
+                        ZipCode = "09321",
+                        Country = "Germany"
+                    },
+                    PhoneNumber = "+4977521653",
+                    Email = "AloysRamstein@gmail.com"
+                }
+            };
+            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                foreach(var customer in customers)
+                {
+                    await Add(customer);
+                }
+                transactionScope.Complete();
+            }
+        }
+        public async Task<Customer> Add(SubmitCustomerIn customerIn)
         {
             var result = _customerValidator.Validate(customerIn);
             if (!result.IsValid)
@@ -38,7 +95,7 @@ namespace GeekShop.Services
                 PhoneNumber = customerIn.PhoneNumber,
                 Email = customerIn.Email 
             };            
-            await _customerRepository.Add(customer);
+            return await _customerRepository.Add(customer);
         }
 
         public async Task Delete(int id)

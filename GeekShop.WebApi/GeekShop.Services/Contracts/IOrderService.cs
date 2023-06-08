@@ -5,7 +5,8 @@ namespace GeekShop.Services.Contracts
 {
     public interface IOrderService
     {
-        Task Add(SubmitOrderIn orderIn);
+        Task SeedData();
+        Task<Order> Add(SubmitOrderIn orderIn);
         Task<IEnumerable<Order>> GetAll();
         Task<Order> Get(int id);
         Task<IEnumerable<Order>> GetByIds(IEnumerable<int> ids);

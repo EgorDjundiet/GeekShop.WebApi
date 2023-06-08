@@ -14,6 +14,11 @@ namespace GeekShop.WebApi.Controllers
         {
             _customerService = customerService;
         }
+        [HttpGet("SeedData")]
+        public async Task SeedData()
+        {
+            await _customerService.SeedData();
+        }
         [HttpGet("GetAll")]
         public async Task<IEnumerable<Customer>> GetAll()
         {
@@ -29,23 +34,21 @@ namespace GeekShop.WebApi.Controllers
         public async Task<IEnumerable<Customer>> GetByIds([FromBody] IEnumerable<int> ids)
         {
             return await _customerService.GetByIds(ids);
-        }
+        }     
         [HttpPost("Add")]
-        public async Task Add([FromBody]SubmitCustomerIn customer)
+        public async Task<Customer> Add([FromBody]SubmitCustomerIn customer)
         {
-            await _customerService.Add(customer);
+            return await _customerService.Add(customer);           
         }
-
+        [HttpPut("Update")]
+        public async Task Update(int id, [FromBody] SubmitCustomerIn customer)
+        {
+            await _customerService.Update(id, customer);
+        }
         [HttpDelete("Delete")]
         public async Task Delete(int id)
         {
             await _customerService.Delete(id);
-        }
-
-        [HttpPut("Update")]
-        public async Task Update(int id,[FromBody]SubmitCustomerIn customer)
-        {
-            await _customerService.Update(id, customer);
-        }
+        }       
     }
 }

@@ -47,7 +47,7 @@ namespace GeekShop.Services
             return payments;
         }
 
-        public async Task Add(SubmitPaymentIn paymentIn)
+        public async Task<Payment> Add(SubmitPaymentIn paymentIn)
         {
             var result = _paymentValidator.Validate(paymentIn);
             if (!result.IsValid)
@@ -80,10 +80,11 @@ namespace GeekShop.Services
 
             using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
-                await _paymentRepository.Add(payment);
+                var paymentFromRepository = await _paymentRepository.Add(payment);
                 await _orderService.ChangeStatus(order.Id, OrderStatus.PendingPayment);               
                 transactionScope.Complete();
-            }                                                         
+                return paymentFromRepository;
+            }           
         }
 
         public async Task Update(int id, SubmitPaymentIn paymentIn)
@@ -127,6 +128,83 @@ namespace GeekShop.Services
                 throw new GeekShopNotFoundException($"Invalid payment id: {id}");
             }
             await _paymentRepository.Delete(id);
+        }
+
+        public async Task SeedData()
+        {
+            var expDate = DateTime.UtcNow;
+            expDate = expDate.AddDays(DateTime.DaysInMonth(expDate.Year, expDate.Month) - expDate.Day);
+            var payments = new List<SubmitPaymentIn>()
+            {
+                new SubmitPaymentIn()
+                {
+                    OrderId = 1,
+                    Amount = 500,
+                    BillingAddress = new SubmitAddressIn
+                    {
+                        Street = "Privet",
+                        City = "London",
+                        State = "London",
+                        ZipCode = "24017",
+                        Country = "UK"
+                    },
+                    CardDetails = new SubmitCardDetailsIn()
+                    {
+                        NameOnCard = "John Walker",
+                        AccountNumber = "1111222233334444",
+                        ExpDate = DateTime.UtcNow,
+                        Cvv = "1234"
+                    }
+                },
+                new SubmitPaymentIn()
+                {
+                    OrderId = 2,
+                    Amount = 1000,
+                    BillingAddress = new SubmitAddressIn
+                    {
+                        Street = "Komsomolskaya",
+                        City = "Moscow",
+                        State = "Moscow",
+                        ZipCode = "46712",
+                        Country = "Russia"
+                    },
+                    CardDetails = new SubmitCardDetailsIn()
+                    {
+                        NameOnCard = "Natalya Pushkin",
+                        AccountNumber = "4444333322221111",
+                        ExpDate = DateTime.UtcNow,
+                        Cvv = "4309"
+                    }
+                },
+                new SubmitPaymentIn()
+                {
+                    OrderId = 3,
+                    Amount = 100,
+                    BillingAddress = new SubmitAddressIn
+                    {
+                        Street = "Oderbergerstrasse",
+                        City = "Berlin",
+                        State = "Berlin",
+                        ZipCode = "09321",
+                        Country = "Germany"
+                    },
+                    CardDetails = new SubmitCardDetailsIn()
+                    {
+                        NameOnCard = "Alois Ramnstein",
+                        AccountNumber = "9999888866667777",
+                        ExpDate = DateTime.UtcNow,
+                        Cvv = "963"
+                    }
+                }
+            };
+            using(var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                foreach (var payment in payments)
+                {
+                    await Add(payment);
+                }
+                transactionScope.Complete();
+            }           
         }
     }
 }
