@@ -14,11 +14,7 @@ namespace GeekShop.WebApi.Controllers
         {
             _paymentService = paymentService;
         }
-        [HttpGet("SeedData")]
-        public async Task SeedData()
-        {
-            await _paymentService.SeedData();
-        }
+
         [HttpGet("GetAll")]
         public async Task<IEnumerable<Payment>> GetAll()
         {
@@ -30,19 +26,23 @@ namespace GeekShop.WebApi.Controllers
         {
             return await _paymentService.Get(id);
         }
-       
+
+        [HttpGet("GetOrderByPaymentId")]
+        public async Task<Order> GetOrderByPaymentId(int id)
+        {
+            return await _paymentService.GetOrderByPaymentId(id);
+        }
         [HttpPost("GetByIds")]
         public async Task<IEnumerable<Payment>> GetByIds(IEnumerable<int> ids)
         {
             return await _paymentService.GetByIds(ids);
         }
-
         [HttpPost("Add")]
         public async Task<Payment> Add([FromBody]SubmitPaymentIn payment)
         {
             return await _paymentService.Add(payment);
         }
-      
+        
         [HttpPut("Update")]
         public async Task Update(int id, [FromBody]SubmitPaymentIn payment)
         {

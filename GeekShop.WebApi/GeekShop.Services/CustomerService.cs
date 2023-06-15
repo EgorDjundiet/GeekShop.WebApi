@@ -1,89 +1,34 @@
-﻿using FluentValidation;
+﻿using Azure.Core;
+using FluentValidation;
 using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
+using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
-using System.Transactions;
 
 namespace GeekShop.Services
 {  
     public class CustomerService : ICustomerService
     {
-        ICustomerRepository _customerRepository;
-        AbstractValidator<SubmitCustomerIn> _customerValidator;
-        public CustomerService(ICustomerRepository customerRepository, AbstractValidator<SubmitCustomerIn> customerValidator)
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly AbstractValidator<SubmitCustomerIn> _customerValidator;
+        public CustomerService(IUnitOfWork unitOfWork, AbstractValidator<SubmitCustomerIn> customerValidator)
         {
-            _customerRepository = customerRepository;
+            _unitOfWork = unitOfWork;
             _customerValidator = customerValidator;
-        }
-        public async Task SeedData()
-        {
-            var customers = new List<SubmitCustomerIn>() 
-            { 
-                new SubmitCustomerIn() 
-                { 
-                    Name = "John Walker", 
-                    Address = new SubmitAddressIn 
-                    { 
-                        Street = "Privet",
-                        City = "London",
-                        State = "London",
-                        ZipCode = "24017",
-                        Country = "UK"
-                    },
-                    PhoneNumber = "+4477890345",
-                    Email = "JohnWalker@gmail.com"
-                },
-                new SubmitCustomerIn()
-                {
-                    Name = "Natalya Pushkin",
-                    Address = new SubmitAddressIn
-                    {
-                        Street = "Komsomolskaya",
-                        City = "Moscow",
-                        State = "Moscow",
-                        ZipCode = "46712",
-                        Country = "Russia"
-                    },
-                    PhoneNumber = "+777623908",
-                    Email = "NatalyaPushkin@gmail.com"
-                },
-                new SubmitCustomerIn()
-                {
-                    Name = "Aloys Ramstein",
-                    Address = new SubmitAddressIn
-                    {
-                        Street = "Oderbergerstrasse",
-                        City = "Berlin",
-                        State = "Berlin",
-                        ZipCode = "09321",
-                        Country = "Germany"
-                    },
-                    PhoneNumber = "+4977521653",
-                    Email = "AloysRamstein@gmail.com"
-                }
-            };
-            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
-            {
-                foreach(var customer in customers)
-                {
-                    await Add(customer);
-                }
-                transactionScope.Complete();
-            }
         }
         public async Task<Customer> Add(SubmitCustomerIn customerIn)
         {
             var result = _customerValidator.Validate(customerIn);
             if (!result.IsValid)
             {
-                throw new GeekShopValidationException(result.ToString());
+                throw new Domain.Exceptions.ValidationException(result.ToString());
             }
 
-            var customer = new Customer() 
-            { 
-                Name = customerIn.Name!, 
+            var customer = new Customer()
+            {
+                Name = customerIn.Name!,
                 Address = new Address()
                 {
                     Street = customerIn.Address!.Street!,
@@ -93,75 +38,77 @@ namespace GeekShop.Services
                     Country = customerIn.Address!.Country!
                 },
                 PhoneNumber = customerIn.PhoneNumber,
-                Email = customerIn.Email 
-            };            
-            return await _customerRepository.Add(customer);
+                Email = customerIn.Email
+            };
+            var id = await _unitOfWork.Customers.Add(customer);
+            customer = await Get(id);
+            _unitOfWork.SaveChanges();
+            return customer;
         }
-
         public async Task Delete(int id)
         {
-            var customer = await _customerRepository.Get(id);
-            if(customer is null)
-            {
-                throw new GeekShopNotFoundException($"Invalid customer id: {id}");
-            }
-            await _customerRepository.Delete(id);
-        }
-
-        public async Task<Customer> Get(int id)
-        {
-            var customer = await _customerRepository.Get(id);
+            var customer = await _unitOfWork.Customers.Get(id);
             if (customer is null)
             {
-                throw new GeekShopNotFoundException($"Invalid customer id: {id}");
+                throw new NotFoundException($"Invalid customer id: {id}");
+            }
+            await _unitOfWork.Customers.Delete(id);
+            _unitOfWork.SaveChanges();
+        }
+        public async Task Update(int id, SubmitCustomerIn customerIn)
+        {
+            var result = _customerValidator.Validate(customerIn);
+            if (!result.IsValid)
+            {
+                throw new Domain.Exceptions.ValidationException(result.ToString());
+            }
+
+            var customer = await _unitOfWork.Customers.Get(id);
+            if (customer is null)
+            {
+                throw new NotFoundException($"Invalid customer id: {id}");
+            }
+
+            customer.Name = customerIn.Name!;
+            customer.Address = new Address()
+            {
+                Street = customerIn.Address!.Street!,
+                City = customerIn.Address!.City!,
+                State = customerIn.Address!.State!,
+                ZipCode = customerIn.Address!.ZipCode!,
+                Country = customerIn.Address!.Country!
+            };
+            customer.PhoneNumber = customerIn.PhoneNumber;
+            customer.Email = customerIn.Email;
+            await _unitOfWork.Customers.Update(customer);
+            _unitOfWork.SaveChanges();
+        }
+        public async Task<Customer> Get(int id)
+        {
+            var customer = await _unitOfWork.Customers.Get(id);
+            if (customer is null)
+            {
+                throw new NotFoundException($"Invalid customer id: {id}");
             }
             return customer;
         }
 
         public async Task<IEnumerable<Customer>> GetAll()
         {
-            return await _customerRepository.GetAll();
+            return await _unitOfWork.Customers.GetAll();
         }
 
         public async Task<IEnumerable<Customer>> GetByIds(IEnumerable<int> ids)
         {
             ids = ids.Distinct();
-            var customers = await _customerRepository.GetByIds(ids);
+            var customers = await _unitOfWork.Customers.GetByIds(ids);
             var invalidIds = ids.Where(id => !customers.Select(p => p.Id).Contains(id));
             if (invalidIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidIds);
-                throw new GeekShopNotFoundException($"Invalid customer ids: {unfoundIds}");
+                throw new NotFoundException($"Invalid customer ids: {unfoundIds}");
             }
             return customers;
-        }
-
-        public async Task Update(int id, SubmitCustomerIn customerIn)
-        {
-            var result = _customerValidator.Validate(customerIn);
-            if (!result.IsValid)
-            {
-                throw new GeekShopValidationException(result.ToString());
-            }
-
-            var customer = await _customerRepository.Get(id);
-            if (customer is null)
-            {
-                throw new GeekShopNotFoundException($"Invalid customer id: {id}");
-            }
-
-            customer.Name = customerIn.Name!;
-            customer.Address = new Address() 
-            { 
-                Street = customerIn.Address!.Street!,
-                City = customerIn.Address!.City!,
-                State = customerIn.Address!.State!,                
-                ZipCode = customerIn.Address!.ZipCode!,
-                Country = customerIn.Address!.Country!
-            };
-            customer.PhoneNumber = customerIn.PhoneNumber;
-            customer.Email = customerIn.Email;           
-            await _customerRepository.Update(customer);
         }
     }
 }

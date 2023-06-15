@@ -14,7 +14,7 @@
         public string AccountNumber {get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public PaymentStatus Status { get; set; }
-        public int OrderId { get; set; }
+        public int? OrderId { get; set; }
         public Address BillingAddress { get; set; } = new Address();
     }     
 }

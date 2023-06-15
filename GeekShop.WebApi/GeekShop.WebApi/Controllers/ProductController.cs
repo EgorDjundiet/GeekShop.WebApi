@@ -14,11 +14,6 @@ namespace GeekShop.WebApi.Controllers
         {
             _productService = productService;
         }
-        [HttpGet("SeedData")]
-        public async Task SeedData()
-        {
-            await _productService.SeedData();
-        }
         [HttpGet("GetAll")]
         public async Task<IEnumerable<Product>> GetAll()
         {
