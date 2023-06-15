@@ -2,17 +2,17 @@
 using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
+using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
-using System.Transactions;
 
 namespace GeekShop.Services
 {
     public class PaymentService : IPaymentService
     {
-        IPaymentRepository _paymentRepository;
-        IOrderService _orderService;
-        AbstractValidator<SubmitPaymentIn> _paymentValidator;
+        private readonly IPaymentRepository _paymentRepository;
+        private readonly IOrderService _orderService;
+        private readonly AbstractValidator<SubmitPaymentIn> _paymentValidator;
         public PaymentService(IPaymentRepository paymentRepository, IOrderService orderService, AbstractValidator<SubmitPaymentIn> paymentValidator)
         {
             _paymentRepository = paymentRepository;
@@ -24,7 +24,7 @@ namespace GeekShop.Services
             var payment = await _paymentRepository.Get(id);
             if(payment is null)
             {
-                throw new GeekShopNotFoundException($"Invalid payment id: {id}");
+                throw new NotFoundException($"Invalid payment id: {id}");
             }
             return payment;
         }
@@ -42,7 +42,7 @@ namespace GeekShop.Services
             if(invalidIds.Count() > 0)
             {
                 string idsStr = string.Join(",", invalidIds);
-                throw new GeekShopNotFoundException($"Invalid payment ids: {idsStr}");
+                throw new NotFoundException($"Invalid payment ids: {idsStr}");
             }
             return payments;
         }
@@ -52,7 +52,7 @@ namespace GeekShop.Services
             var result = _paymentValidator.Validate(paymentIn);
             if (!result.IsValid)
             {
-                throw new GeekShopValidationException(result.ToString());
+                throw new Domain.Exceptions.ValidationException(result.ToString());
             }
             
             await _orderService.Get(paymentIn.OrderId!.Value);
@@ -77,14 +77,11 @@ namespace GeekShop.Services
             };
 
             var order = await _orderService.Get(payment.OrderId);
-
-            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
-            {
-                var paymentFromRepository = await _paymentRepository.Add(payment);
-                await _orderService.ChangeStatus(order.Id, OrderStatus.PendingPayment);               
-                transactionScope.Complete();
-                return paymentFromRepository;
-            }           
+            await _orderService.ChangeStatus(order.Id, OrderStatus.PendingPayment);
+            order.Status = OrderStatus.PendingPayment;
+            var id = await _paymentRepository.Add(payment, order);
+            
+            return await Get(id);               
         }
 
         public async Task Update(int id, SubmitPaymentIn paymentIn)
@@ -92,13 +89,13 @@ namespace GeekShop.Services
             var result = _paymentValidator.Validate(paymentIn);
             if (!result.IsValid)
             {
-                throw new GeekShopValidationException(result.ToString());
+                throw new Domain.Exceptions.ValidationException(result.ToString());
             }
 
             var payment = await _paymentRepository.Get(id);
             if (payment is null)
             {
-                throw new GeekShopNotFoundException($"Invalid payment id: {id}");
+                throw new NotFoundException($"Invalid payment id: {id}");
             }
 
             await _orderService.Get(paymentIn.OrderId!.Value);
@@ -117,15 +114,16 @@ namespace GeekShop.Services
                 State = paymentIn.BillingAddress!.State!,
                 ZipCode = paymentIn.BillingAddress!.ZipCode!,
                 Country = paymentIn.BillingAddress!.Country!
-            };           
-            await _paymentRepository.Update(payment);
+            };
+            var order = await _orderService.Get(payment.OrderId);
+            await _paymentRepository.Update(payment, order);
         }
 
         public async Task Delete(int id)
         {
             if (await _paymentRepository.Get(id) is null)
             {
-                throw new GeekShopNotFoundException($"Invalid payment id: {id}");
+                throw new NotFoundException($"Invalid payment id: {id}");
             }
             await _paymentRepository.Delete(id);
         }
@@ -152,7 +150,7 @@ namespace GeekShop.Services
                     {
                         NameOnCard = "John Walker",
                         AccountNumber = "1111222233334444",
-                        ExpDate = DateTime.UtcNow,
+                        ExpDate = expDate,
                         Cvv = "1234"
                     }
                 },
@@ -172,7 +170,7 @@ namespace GeekShop.Services
                     {
                         NameOnCard = "Natalya Pushkin",
                         AccountNumber = "4444333322221111",
-                        ExpDate = DateTime.UtcNow,
+                        ExpDate = expDate,
                         Cvv = "4309"
                     }
                 },
@@ -192,19 +190,26 @@ namespace GeekShop.Services
                     {
                         NameOnCard = "Alois Ramnstein",
                         AccountNumber = "9999888866667777",
-                        ExpDate = DateTime.UtcNow,
-                        Cvv = "963"
+                        ExpDate = expDate,
+                        Cvv = "9683"
                     }
                 }
             };
-            using(var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+
+            foreach (var payment in payments)
             {
-                foreach (var payment in payments)
-                {
-                    await Add(payment);
-                }
-                transactionScope.Complete();
-            }           
+                await Add(payment);
+            }
+        }
+
+        public Task<Order> GetOrderByPaymentId(int id)
+        {
+            var order = _paymentRepository.GetOrderByPaymentId(id);
+            if(order == null)
+            {
+                throw new NotFoundException($"Invalid order id: {id}");
+            }
+            return order!;
         }
     }
 }

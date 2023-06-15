@@ -2,16 +2,16 @@
 using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
+using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
-using System.Transactions;
 
 namespace GeekShop.Services
 {  
     public class CustomerService : ICustomerService
     {
-        ICustomerRepository _customerRepository;
-        AbstractValidator<SubmitCustomerIn> _customerValidator;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly AbstractValidator<SubmitCustomerIn> _customerValidator;
         public CustomerService(ICustomerRepository customerRepository, AbstractValidator<SubmitCustomerIn> customerValidator)
         {
             _customerRepository = customerRepository;
@@ -64,13 +64,10 @@ namespace GeekShop.Services
                     Email = "AloysRamstein@gmail.com"
                 }
             };
-            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+
+            foreach(var customer in customers)
             {
-                foreach(var customer in customers)
-                {
-                    await Add(customer);
-                }
-                transactionScope.Complete();
+                await Add(customer);
             }
         }
         public async Task<Customer> Add(SubmitCustomerIn customerIn)
@@ -78,7 +75,7 @@ namespace GeekShop.Services
             var result = _customerValidator.Validate(customerIn);
             if (!result.IsValid)
             {
-                throw new GeekShopValidationException(result.ToString());
+                throw new Domain.Exceptions.ValidationException(result.ToString());
             }
 
             var customer = new Customer() 
@@ -94,8 +91,9 @@ namespace GeekShop.Services
                 },
                 PhoneNumber = customerIn.PhoneNumber,
                 Email = customerIn.Email 
-            };            
-            return await _customerRepository.Add(customer);
+            };
+            var id = await _customerRepository.Add(customer);
+            return await Get(id);
         }
 
         public async Task Delete(int id)
@@ -103,7 +101,7 @@ namespace GeekShop.Services
             var customer = await _customerRepository.Get(id);
             if(customer is null)
             {
-                throw new GeekShopNotFoundException($"Invalid customer id: {id}");
+                throw new NotFoundException($"Invalid customer id: {id}");
             }
             await _customerRepository.Delete(id);
         }
@@ -113,7 +111,7 @@ namespace GeekShop.Services
             var customer = await _customerRepository.Get(id);
             if (customer is null)
             {
-                throw new GeekShopNotFoundException($"Invalid customer id: {id}");
+                throw new NotFoundException($"Invalid customer id: {id}");
             }
             return customer;
         }
@@ -131,7 +129,7 @@ namespace GeekShop.Services
             if (invalidIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidIds);
-                throw new GeekShopNotFoundException($"Invalid customer ids: {unfoundIds}");
+                throw new NotFoundException($"Invalid customer ids: {unfoundIds}");
             }
             return customers;
         }
@@ -141,13 +139,13 @@ namespace GeekShop.Services
             var result = _customerValidator.Validate(customerIn);
             if (!result.IsValid)
             {
-                throw new GeekShopValidationException(result.ToString());
+                throw new Domain.Exceptions.ValidationException(result.ToString());
             }
 
             var customer = await _customerRepository.Get(id);
             if (customer is null)
             {
-                throw new GeekShopNotFoundException($"Invalid customer id: {id}");
+                throw new NotFoundException($"Invalid customer id: {id}");
             }
 
             customer.Name = customerIn.Name!;

@@ -26,6 +26,9 @@ namespace GeekShop.WebApi
             sc.AddScoped<IPaymentService, PaymentService>();
             sc.AddScoped<IPaymentRepository, SqlPaymentRepository>();
 
+            sc.AddScoped<ICategoryService, CategoryService>();
+            sc.AddScoped<ICategoryRepository, SqlCategoryRepository>();
+
             sc.AddScoped<AbstractValidator<SubmitCustomerIn>, SubmitCustomerInValidator>();
             sc.AddScoped<AbstractValidator<SubmitOrderIn>, SumbitOrderInValidator>();
             sc.AddScoped<AbstractValidator<SubmitOrderDetailsIn>, SubmitOrderDetailsInValidator>();
@@ -33,6 +36,7 @@ namespace GeekShop.WebApi
             sc.AddScoped<AbstractValidator<SubmitPaymentIn>, SubmitPaymentInValidator>();
             sc.AddScoped<AbstractValidator<SubmitCardDetailsIn>, SubmitCardDetailsInValidator>();
             sc.AddScoped<AbstractValidator<SubmitAddressIn>, SubmitAddressInValidator>();
+            sc.AddScoped<AbstractValidator<SubmitCategoryWithParentIn>, SubmitCategoryWithParentInValidator>();
         }
     }
 }

@@ -2,9 +2,9 @@
 using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
 using GeekShop.Domain.ViewModels;
+using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
-using System.Transactions;
 
 namespace GeekShop.Services
 {
@@ -32,7 +32,7 @@ namespace GeekShop.Services
 
                 if (customer is null)
                 {
-                    throw new GeekShopNotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
+                    throw new NotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
                 }
 
                 orderIn.CustomerName = customer.Name;
@@ -51,7 +51,7 @@ namespace GeekShop.Services
             var result = _orderValidator.Validate(orderIn);
             if (!result.IsValid)
             {
-                throw new GeekShopValidationException(result.ToString());
+                throw new Domain.Exceptions.ValidationException(result.ToString());
             }
 
             var validProducts = await _productRepository.GetByIds(orderIn.Details!.Select(x => x.ProductId!.Value));
@@ -61,7 +61,7 @@ namespace GeekShop.Services
             if (invalidProductIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidProductIds);
-                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}");
+                throw new NotFoundException($"Invalid product ids: {unfoundIds}");
             }
 
 
@@ -87,6 +87,7 @@ namespace GeekShop.Services
                         ProductTitle = product.Title,
                         ProductAuthor = product.Author,
                         ProductDescription = product.Description,
+                        ProductCategoryName = product.CategoryName,
                         ProductPrice = product.Price,
                         ProductQuantity = detail.ProductQuantity!.Value
                     };
@@ -94,8 +95,8 @@ namespace GeekShop.Services
                 }).ToList(),
                 Status = OrderStatus.Placed
             };
-
-            return await _orderRepository.Add(order);
+            var id = await _orderRepository.Add(order);
+            return await Get(id);
         }
 
         public async Task Delete(int id)
@@ -103,7 +104,7 @@ namespace GeekShop.Services
             var order = await _orderRepository.Get(id);
             if (order is null)
             {
-                throw new GeekShopNotFoundException($"Invalid order id {id}.");
+                throw new NotFoundException($"Invalid order id {id}.");
             }
             await _orderRepository.Delete(id);
         }
@@ -113,7 +114,7 @@ namespace GeekShop.Services
             var order = await _orderRepository.Get(id);
             if (order is null)
             {
-                throw new GeekShopNotFoundException($"Invalid order id {id}.");
+                throw new NotFoundException($"Invalid order id {id}.");
             }
             return order;
         }
@@ -124,9 +125,7 @@ namespace GeekShop.Services
         }
         public async Task ChangeStatus(int id, OrderStatus status)
         {
-            var order = await Get(id);
-            order.Status = status;
-            await _orderRepository.Update(order);
+            await _orderRepository.ChangeStatus(id,status);
         }
         public async Task Update(int id, SubmitOrderIn orderIn)
         {
@@ -136,7 +135,7 @@ namespace GeekShop.Services
 
                 if (customer is null)
                 {
-                    throw new GeekShopNotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
+                    throw new NotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
                 }
 
                 orderIn.CustomerName = customer.Name;
@@ -155,11 +154,11 @@ namespace GeekShop.Services
             var result = _orderValidator.Validate(orderIn);
             if (!result.IsValid)
             {
-                throw new GeekShopValidationException(result.ToString());
+                throw new Domain.Exceptions.ValidationException(result.ToString());
             }
             if(await _orderRepository.Get(id) is null)
             {
-                throw new GeekShopNotFoundException($"Invalid order id: {id}.");
+                throw new NotFoundException($"Invalid order id: {id}.");
             }
 
             var validProducts = await _productRepository.GetByIds(orderIn.Details!.Select(x => x.ProductId!.Value));
@@ -169,7 +168,7 @@ namespace GeekShop.Services
             if (invalidProductIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidProductIds);
-                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}.");
+                throw new NotFoundException($"Invalid product ids: {unfoundIds}.");
             }
 
             var order = new Order()
@@ -194,11 +193,13 @@ namespace GeekShop.Services
                         ProductTitle = product.Title,
                         ProductAuthor = product.Author,
                         ProductDescription = product.Description,
+                        ProductCategoryName = product.CategoryName,
                         ProductPrice = product.Price,
                         ProductQuantity = detail.ProductQuantity!.Value
                     };
                     return orderDetail;
-                }).ToList()              
+                }
+                ).ToList()              
             };
             
             await _orderRepository.Update(order);
@@ -212,7 +213,7 @@ namespace GeekShop.Services
             if (invalidIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidIds);
-                throw new GeekShopNotFoundException($"Invalid order ids: {unfoundIds}.");
+                throw new NotFoundException($"Invalid order ids: {unfoundIds}.");
             }
             return orders;
         }
@@ -273,13 +274,10 @@ namespace GeekShop.Services
                     }
                 }
             };
-            using(var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+
+            foreach (var order in orders)
             {
-                foreach (var order in orders)
-                {
-                    await Add(order);
-                }
-                transactionScope.Complete();
+                await Add(order);
             }
         }
     }
