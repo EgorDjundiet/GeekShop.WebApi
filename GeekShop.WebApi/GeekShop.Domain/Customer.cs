@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace GeekShop.Domain
+﻿namespace GeekShop.Domain
 {
     public class Customer
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
-        public string Address { get; set; } = string.Empty;
+        public Address Address { get; set; } = new Address();
         public string? PhoneNumber { get; set; }
         public string? Email { get; set; }
     }

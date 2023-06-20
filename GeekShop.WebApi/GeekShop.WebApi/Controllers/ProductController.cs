@@ -1,9 +1,7 @@
 ﻿using GeekShop.Domain;
 using GeekShop.Domain.ViewModels;
-using GeekShop.Services;
 using GeekShop.Services.Contracts;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections;
 
 namespace GeekShop.WebApi.Controllers
 {
@@ -16,7 +14,11 @@ namespace GeekShop.WebApi.Controllers
         {
             _productService = productService;
         }
-
+        [HttpGet("SeedData")]
+        public async Task SeedData()
+        {
+            await _productService.SeedData();
+        }
         [HttpGet("GetAll")]
         public async Task<IEnumerable<Product>> GetAll()
         {
@@ -36,21 +38,19 @@ namespace GeekShop.WebApi.Controllers
         }
 
         [HttpPost("Add")]
-        public async Task Add([FromBody]SubmitProductIn productIn)
+        public async Task<Product> Add([FromBody]SubmitProductIn productIn)
         {
-            await _productService.Add(productIn);              
-        }
-
-        [HttpDelete("Delete")]
-        public async Task Delete(int id)
-        {
-            await _productService.Get(id);
-        }
-
+            return await _productService.Add(productIn);              
+        }       
         [HttpPut("Update")]
         public async Task Update(int id, [FromBody]SubmitProductIn productIn)
         {
             await _productService.Update(id,productIn);
+        }
+        [HttpDelete("Delete")]
+        public async Task Delete(int id)
+        {
+            await _productService.Delete(id);
         }
     }
 }

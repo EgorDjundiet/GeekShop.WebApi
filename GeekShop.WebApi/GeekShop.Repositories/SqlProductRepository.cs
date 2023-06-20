@@ -1,9 +1,8 @@
 ﻿using GeekShop.Domain;
-using System.Data;
 using Dapper;
-using GeekShop.Domain.ViewModels;
 using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
+using GeekShop.Domain.Exceptions;
 
 namespace GeekShop.Repositories
 {
@@ -14,108 +13,143 @@ namespace GeekShop.Repositories
         {
             _context = context; 
         }
-        public async Task Add(Product product)
+        public async Task<int> Add(Product product)
         {
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+                
             var query = @"
                 INSERT INTO Products
-                (Title, Author, Description, Price)
-                Values 
-                (@Title, @Author, @Description, @Price)";
-
-            using (IDbConnection connection = _context.CreateConnection())
+                (Title, Author, Description, Price, CategoryName)
+                VALUES 
+                (@Title, @Author, @Description, @Price, @CategoryName)
+                SELECT SCOPE_IDENTITY();";
+            try
             {
-                await connection.QueryAsync(query,new 
+                product.Id = await connection.QuerySingleAsync<int>(query, new
                 {
-                    Title = product.Title, 
-                    Author = product.Author, 
+                    Title = product.Title,
+                    Author = product.Author,
                     Description = product.Description,
-                    Price = product.Price
-                });
+                    Price = product.Price,
+                    CategoryName = product.CategoryName
+                }, transaction: transaction);
+                return product.Id;
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
             }
         }
 
         public async Task Delete(int id)
         {
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+
             var query = @"
                 DELETE FROM Products
                 WHERE Id = @Id";
-
-            using (IDbConnection connection = _context.CreateConnection())
+            try
             {
-                await connection.QueryAsync(query, new { Id = id});
+                await connection.QueryAsync(query, new { Id = id }, transaction: transaction);
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
             }
         }
 
         public async Task<Product?> Get(int id)
         {
             var query = @"
-                SELECT 
-                Id, 
-                Title,
-                Author,
-                Description,
-                Price
+                SELECT Id, Title, Author, Description, Price, CategoryName
                 FROM Products
                 WHERE Id = @Id";
 
-            using (IDbConnection connection = _context.CreateConnection())
-            { 
-                return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id});
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+            
+            try
+            {
+                return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id }, transaction:transaction);
+            }
+            catch 
+            {
+                _context.Rollback();
+                throw;
             }
         }
 
         public async Task<IEnumerable<Product>> GetByIds(IEnumerable<int> ids)
         {
             var query = @"
-                SELECT 
-                Id,
-                Title,
-                Author,
-                Description,
-                Price
+                SELECT Id, Title, Author, Description, Price, CategoryName
                 FROM Products
                 WHERE Id IN @Ids";
     
-            using (IDbConnection connection = _context.CreateConnection())
-            {
-                return await connection.QueryAsync<Product>(query, new { Ids = ids.ToArray() });               
-            }
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
 
+            try
+            {
+                return await connection.QueryAsync<Product>(query, new { Ids = ids.ToArray() }, transaction:transaction);
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
+            }
         }
+
         public async Task Update(Product product)
         {
             var query = @"
                 UPDATE Products
-                SET Title = @Title, Author = @Author, Description = @Description, Price = @Price
+                SET Title = @Title, Author = @Author, Description = @Description, Price = @Price, CategoryName = @CategoryName
                 WHERE Id = @Id";
 
-            using (IDbConnection connection = _context.CreateConnection())
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+                    
+            try
             {
-                await connection.QueryAsync(query, new { 
-                    Id = product.Id, 
-                    Title = product.Title, 
-                    Author = product.Author, 
-                    Description = product.Description, 
-                    Price = product.Price
-                });
+                await connection.QueryAsync(query, new
+                {
+                    Id = product.Id,
+                    Title = product.Title,
+                    Author = product.Author,
+                    Description = product.Description,
+                    Price = product.Price,
+                    CategoryName = product.CategoryName
+                }, transaction:transaction);
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
             }
         }
 
         public async Task<IEnumerable<Product>> GetAll()
         {
             var query = @"
-                SELECT 
-                Id,
-                Title,
-                Author,
-                Description,
-                Price
+                SELECT Id, Title, Author, Description, Price, CategoryName
                 FROM Products";
 
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
 
-            using (IDbConnection connection = _context.CreateConnection())
+            try
             {
-                return await connection.QueryAsync<Product>(query);
+                return await connection.QueryAsync<Product>(query,transaction:transaction);
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
             }
         }        
     }

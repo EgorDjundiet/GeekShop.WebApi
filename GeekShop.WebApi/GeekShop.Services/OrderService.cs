@@ -1,8 +1,8 @@
 ﻿using FluentValidation;
 using GeekShop.Domain;
 using GeekShop.Domain.Exceptions;
-using GeekShop.Domain.Validators;
 using GeekShop.Domain.ViewModels;
+using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Services.Contracts;
 
@@ -24,7 +24,7 @@ namespace GeekShop.Services
         }
 
 
-        public async Task Add(SubmitOrderIn orderIn)
+        public async Task<Order> Add(SubmitOrderIn orderIn)
         {
             if (orderIn.CustomerId is not null)
             {
@@ -32,11 +32,18 @@ namespace GeekShop.Services
 
                 if (customer is null)
                 {
-                    throw new GeekShopNotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
+                    throw new NotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
                 }
 
                 orderIn.CustomerName = customer.Name;
-                orderIn.CustomerAddress = customer.Address;
+                orderIn.CustomerAddress = new SubmitAddressIn 
+                {
+                    Street = customer.Address.Street,
+                    City = customer.Address.City,
+                    State = customer.Address.State,
+                    ZipCode = customer.Address.ZipCode,
+                    Country = customer.Address.Country
+                };
                 orderIn.PhoneNumber = customer.PhoneNumber;
                 orderIn.Email = customer.Email;
             }
@@ -44,7 +51,7 @@ namespace GeekShop.Services
             var result = _orderValidator.Validate(orderIn);
             if (!result.IsValid)
             {
-                throw new GeekShopValidationException(result.ToString());
+                throw new Domain.Exceptions.ValidationException(result.ToString());
             }
 
             var validProducts = await _productRepository.GetByIds(orderIn.Details!.Select(x => x.ProductId!.Value));
@@ -54,24 +61,42 @@ namespace GeekShop.Services
             if (invalidProductIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidProductIds);
-                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}");
+                throw new NotFoundException($"Invalid product ids: {unfoundIds}");
             }
 
-            
+
             var order = new Order()
             {
                 CustomerName = orderIn.CustomerName!,
-                CustomerAddress = orderIn.CustomerAddress!,
+                CustomerAddress = new Address
+                {
+                    Street = orderIn.CustomerAddress!.Street!,
+                    City = orderIn.CustomerAddress!.City!,
+                    State = orderIn.CustomerAddress!.State!,
+                    ZipCode = orderIn.CustomerAddress!.ZipCode!,
+                    Country = orderIn.CustomerAddress!.Country!
+                },
                 PhoneNumber = orderIn.PhoneNumber,
                 Email = orderIn.Email,
-                Details = orderIn.Details!.Select(detail => new OrderDetails()
+                Date = DateTime.UtcNow,
+                Details = orderIn.Details!.Select(detail =>
                 {
-                    Product = validProducts.Where(product => product.Id == detail.ProductId).Single(),
-                    ProductQuantity = detail.ProductQuantity!.Value
-                }).ToList()
+                    var product = validProducts.Where(product => product.Id == detail.ProductId).Single();
+                    var orderDetail = new OrderDetails()
+                    {
+                        ProductTitle = product.Title,
+                        ProductAuthor = product.Author,
+                        ProductDescription = product.Description,
+                        ProductCategoryName = product.CategoryName,
+                        ProductPrice = product.Price,
+                        ProductQuantity = detail.ProductQuantity!.Value
+                    };
+                    return orderDetail;
+                }).ToList(),
+                Status = OrderStatus.Placed
             };
-
-            await _orderRepository.Add(order);
+            var id = await _orderRepository.Add(order);
+            return await Get(id);
         }
 
         public async Task Delete(int id)
@@ -79,7 +104,7 @@ namespace GeekShop.Services
             var order = await _orderRepository.Get(id);
             if (order is null)
             {
-                throw new GeekShopNotFoundException($"Invalid order id {id}.");
+                throw new NotFoundException($"Invalid order id {id}.");
             }
             await _orderRepository.Delete(id);
         }
@@ -89,7 +114,7 @@ namespace GeekShop.Services
             var order = await _orderRepository.Get(id);
             if (order is null)
             {
-                throw new GeekShopNotFoundException($"Invalid order id {id}.");
+                throw new NotFoundException($"Invalid order id {id}.");
             }
             return order;
         }
@@ -98,7 +123,10 @@ namespace GeekShop.Services
         {
             return await _orderRepository.GetAll();
         }
-
+        public async Task ChangeStatus(int id, OrderStatus status)
+        {
+            await _orderRepository.ChangeStatus(id,status);
+        }
         public async Task Update(int id, SubmitOrderIn orderIn)
         {
             if (orderIn.CustomerId is not null)
@@ -107,11 +135,18 @@ namespace GeekShop.Services
 
                 if (customer is null)
                 {
-                    throw new GeekShopNotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
+                    throw new NotFoundException($"Invalid customer id: {orderIn.CustomerId}.");
                 }
 
                 orderIn.CustomerName = customer.Name;
-                orderIn.CustomerAddress = customer.Address;
+                orderIn.CustomerAddress = new SubmitAddressIn
+                {
+                    Street = customer.Address.Street,
+                    City = customer.Address.City,
+                    State = customer.Address.State,
+                    ZipCode = customer.Address.ZipCode,
+                    Country = customer.Address.Country
+                };
                 orderIn.PhoneNumber = customer.PhoneNumber;
                 orderIn.Email = customer.Email;
             }
@@ -119,11 +154,11 @@ namespace GeekShop.Services
             var result = _orderValidator.Validate(orderIn);
             if (!result.IsValid)
             {
-                throw new GeekShopValidationException(result.ToString());
+                throw new Domain.Exceptions.ValidationException(result.ToString());
             }
             if(await _orderRepository.Get(id) is null)
             {
-                throw new GeekShopNotFoundException($"Invalid order id: {id}.");
+                throw new NotFoundException($"Invalid order id: {id}.");
             }
 
             var validProducts = await _productRepository.GetByIds(orderIn.Details!.Select(x => x.ProductId!.Value));
@@ -133,21 +168,38 @@ namespace GeekShop.Services
             if (invalidProductIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidProductIds);
-                throw new GeekShopNotFoundException($"Invalid product ids: {unfoundIds}.");
+                throw new NotFoundException($"Invalid product ids: {unfoundIds}.");
             }
 
             var order = new Order()
             {
                 Id = id,
                 CustomerName = orderIn.CustomerName!,
-                CustomerAddress = orderIn.CustomerAddress!,
+                CustomerAddress = new Address
+                {
+                    Street = orderIn.CustomerAddress!.Street!,
+                    City = orderIn.CustomerAddress!.City!,
+                    State = orderIn.CustomerAddress!.State!,
+                    ZipCode = orderIn.CustomerAddress!.ZipCode!,
+                    Country = orderIn.CustomerAddress!.Country!
+                },
                 PhoneNumber = orderIn.PhoneNumber,
                 Email = orderIn.Email,
-                Details = orderIn.Details!.Select(detail => new OrderDetails()
+                Details = orderIn.Details!.Select(detail =>
                 {
-                    Product = validProducts.Where(product => product.Id == detail.ProductId).Single(),
-                    ProductQuantity = detail.ProductQuantity!.Value
-                }).ToList()
+                    var product = validProducts.Where(product => product.Id == detail.ProductId).Single();
+                    var orderDetail = new OrderDetails() 
+                    { 
+                        ProductTitle = product.Title,
+                        ProductAuthor = product.Author,
+                        ProductDescription = product.Description,
+                        ProductCategoryName = product.CategoryName,
+                        ProductPrice = product.Price,
+                        ProductQuantity = detail.ProductQuantity!.Value
+                    };
+                    return orderDetail;
+                }
+                ).ToList()              
             };
             
             await _orderRepository.Update(order);
@@ -161,9 +213,72 @@ namespace GeekShop.Services
             if (invalidIds.Count() > 0)
             {
                 var unfoundIds = string.Join(",", invalidIds);
-                throw new GeekShopNotFoundException($"Invalid order ids: {unfoundIds}.");
+                throw new NotFoundException($"Invalid order ids: {unfoundIds}.");
             }
             return orders;
+        }
+
+        public async Task SeedData()
+        {
+            var orders = new List<SubmitOrderIn>()
+            {
+                new SubmitOrderIn()
+                {
+                    CustomerId = 1,
+                    Details = new List<SubmitOrderDetailsIn>()
+                    {
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 1,
+                            ProductQuantity = 1
+                        },
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 2,
+                            ProductQuantity = 1
+                        }
+                    }
+                },
+                new SubmitOrderIn()
+                {
+                    CustomerId = 2,
+                    Details = new List<SubmitOrderDetailsIn>()
+                    {
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 3,
+                            ProductQuantity = 2
+                        },
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 1,
+                            ProductQuantity = 5
+                        }
+                    }
+                },
+                new SubmitOrderIn()
+                {
+                    CustomerId = 3,
+                    Details = new List<SubmitOrderDetailsIn>()
+                    {
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 5,
+                            ProductQuantity = 3
+                        },
+                        new SubmitOrderDetailsIn()
+                        {
+                            ProductId = 2,
+                            ProductQuantity = 1
+                        }
+                    }
+                }
+            };
+
+            foreach (var order in orders)
+            {
+                await Add(order);
+            }
         }
     }
 }

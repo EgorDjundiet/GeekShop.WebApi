@@ -1,195 +1,308 @@
 ﻿using Dapper;
 using GeekShop.Domain;
-using System.Data;
 using GeekShop.Repositories.Contracts;
 using GeekShop.Repositories.Contexts;
-using GeekShop.Domain.ViewModels;
+using GeekShop.Domain.Exceptions;
 
 namespace GeekShop.Repositories
 {
     public class SqlOrderRepository : IOrderRepository
     {
         private readonly IDbContext _context;
-        private readonly IProductRepository _productRepository;
         
-        public SqlOrderRepository(IDbContext context, IProductRepository repository)
+        public SqlOrderRepository(IDbContext context)
         {
             _context = context;
-            _productRepository = repository;
         }
-        public async Task Add(Order order)
+        public async Task<int> Add(Order order)
         {
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+                
             var sqlOrder = @"
-                INSERT INTO Orders (CustomerName, CustomerAddress, Date, PhoneNumber, Email)
-                VALUES (@CustomerName, @CustomerAddress, @Date, @PhoneNumber, @Email);
+                INSERT INTO Orders (CustomerName, CustomerAddressId, Date, PhoneNumber, Email, Status)
+                VALUES (@CustomerName, @CustomerAddressId, @Date, @PhoneNumber, @Email, @Status);
+                SELECT SCOPE_IDENTITY()";
+                
+            var sqlOrderDetails = @"
+                INSERT INTO OrderDetails(OrderId, ProductTitle, ProductAuthor, ProductDescription, ProductPrice, ProductQuantity, ProductCategoryName)
+                VALUES(@OrderId, @ProductTitle, @ProductAuthor, @ProductDescription, @ProductPrice, @ProductQuantity, @ProductCategoryName);";
+                
+            var sqlAddress = @"
+                INSERT INTO Addresses
+                (Street, City, State, ZipCode, Country)
+                VALUES(@Street, @City, @State, @ZipCode, @Country)
                 SELECT SCOPE_IDENTITY()";
 
-            var sqlOrderDetails = @"
-                INSERT INTO OrderDetails(OrderId, ProductId, ProductQuantity)
-                VALUES(@OrderId, @ProductId, @ProductQuantity);";
-
-            using (IDbConnection connection = _context.CreateConnection())
-            {               
-                var orderId = await connection.QuerySingleAsync<int>(sqlOrder, new 
-                {
-                    CustomerName = order.CustomerName,
-                    CustomerAddress = order.CustomerAddress,
-                    PhoneNumber = order.PhoneNumber,
-                    Email = order.Email,
-                    Date = DateTime.UtcNow
-                });
-
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("Street",order.CustomerAddress.Street);
+                parameters.Add("City",order.CustomerAddress.City);
+                parameters.Add("State",order.CustomerAddress.State);
+                parameters.Add("ZipCode",order.CustomerAddress.ZipCode);
+                parameters.Add("Country",order.CustomerAddress.Country);
+                var addressId = await connection.QuerySingleAsync<int>(sqlAddress, parameters, transaction:transaction);
+            
+                parameters.Add("CustomerName", order.CustomerName);
+                parameters.Add("CustomerAddressId", addressId);
+                parameters.Add("PhoneNumber", order.PhoneNumber);
+                parameters.Add("Email", order.Email);
+                parameters.Add("Date", order.Date);
+                parameters.Add("Status", order.Status.ToString());
+                var orderId = await connection.QuerySingleAsync<int>(sqlOrder, parameters, transaction:transaction);
+            
                 foreach (var orderDetail in order.Details)
                 {
-                    await connection.QueryAsync(sqlOrderDetails, new
-                    {
-                        OrderId = orderId,
-                        ProductId = orderDetail.Product.Id,
-                        ProductQuantity = orderDetail.ProductQuantity
-                    });
+                    parameters.Add("OrderId", orderId);
+                    parameters.Add("ProductTitle", orderDetail.ProductTitle);
+                    parameters.Add("ProductAuthor", orderDetail.ProductAuthor);
+                    parameters.Add("ProductDescription", orderDetail.ProductDescription);
+                    parameters.Add("ProductPrice", orderDetail.ProductPrice);
+                    parameters.Add("ProductQuantity", orderDetail.ProductQuantity);
+                    parameters.Add("ProductCategoryName",orderDetail.ProductCategoryName);
+                    await connection.QueryAsync(sqlOrderDetails, parameters, transaction:transaction);
                 }
-            }    
+            
+                return orderId;
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
+            }   
         }
 
         public async Task Delete(int id)
         {
-            var sql = @"DELETE FROM OrderDetails WHERE OrderId = @Id
-                        DELETE FROM Orders WHERE Id = @Id";
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
 
-            using (IDbConnection connection = _context.CreateConnection())
+            var order = await Get(id);
+            var sql = @"
+                DELETE FROM OrderDetails WHERE OrderId = @Id
+                DELETE FROM Orders WHERE Id = @Id
+                DELETE FROM Addresses WHERE Id = @a_Id";
+
+            try
             {
-                await connection.QueryAsync(sql, new { Id = id });
+                await connection.QueryAsync(sql, new { Id = id, a_Id = order!.CustomerAddress.Id }, transaction:transaction);
             }
-                
+            catch
+            {
+                _context.Rollback();
+                throw;
+            }      
         }
 
         public async Task<Order?> Get(int id)
         {
-            using (IDbConnection connection = _context.CreateConnection())
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+
+            var orderDictionary = new Dictionary<int, Order>();
+            
+            var sql = @"
+            SELECT o.Id, o.CustomerName, o.PhoneNumber, o.Email, o.Date, o.Status, 
+                   a.Id, a.Street, a.City, a.State, a.ZipCode, a.Country, 
+                   od.Id, od.ProductTitle, od.ProductAuthor, od.ProductDescription, od.ProductPrice, od.ProductQuantity, od.ProductCategoryName
+            FROM Orders o
+            LEFT JOIN Addresses a ON o.CustomerAddressId = a.Id
+            LEFT JOIN OrderDetails od ON o.Id = od.OrderId
+            WHERE o.Id = @Id";
+            
+            try
             {
-                var orderDictionary = new Dictionary<int, Order>();
-
-                var sql = @"
-                SELECT o.Id, o.CustomerName, o.CustomerAddress, o.PhoneNumber, o.Email, o.Date, od.Id, od.ProductQuantity, p.Id, p.Title, p.Author, p.Description, p.Price
-                FROM Orders o
-                LEFT JOIN OrderDetails od ON o.Id = od.OrderId
-                LEFT JOIN Products p ON od.ProductId = p.Id
-                WHERE o.Id = @Id";
-
-                await connection.QueryAsync<Order, OrderDetails, Product, Order>(sql, (order, orderDetail, product) =>
+                await connection.QueryAsync<Order, Address, OrderDetails, Order>(sql, (order, address, orderDetail) =>
                 {
                     if (!orderDictionary.TryGetValue(order.Id, out var currentOrder))
                     {
                         currentOrder = order;
+                        currentOrder.CustomerAddress = address;
                         currentOrder.Details = new List<OrderDetails>();
                         orderDictionary.Add(currentOrder.Id, currentOrder);
                     }
-
+            
                     if (orderDetail is not null)
                     {
-                        orderDetail.Product = product;
                         currentOrder.Details.Add(orderDetail);
                     }
-
+            
                     return currentOrder;
-                }, new { Id = id });
-
+                }, new { Id = id }, transaction:transaction);
                 return orderDictionary.Values.SingleOrDefault();
-            } 
+            }
+            catch 
+            {
+                _context.Rollback();
+                throw;
+            }
         }
 
         public async Task<IEnumerable<Order>> GetAll()
         {
-            using (IDbConnection connection = _context.CreateConnection())
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+            
+            var orderDictionary = new Dictionary<int, Order>();
+            
+            var sql = @"
+            SELECT o.Id, o.CustomerName, o.PhoneNumber, o.Email, o.Date, o.Status, 
+                   a.Id, a.Street, a.City, a.State, a.ZipCode, a.Country, 
+                   od.Id, od.ProductTitle, od.ProductAuthor, od.ProductDescription, od.ProductPrice, od.ProductQuantity, od.ProductCategoryName
+            FROM Orders o
+            LEFT JOIN Addresses a ON o.CustomerAddressId = a.Id
+            LEFT JOIN OrderDetails od ON o.Id = od.OrderId";
+            
+            try
             {
-                var orderDictionary = new Dictionary<int, Order>();
-
-                var sql = @"
-                SELECT o.Id, o.CustomerName, o.CustomerAddress, o.PhoneNumber, o.Email, o.Date, od.Id, od.ProductQuantity, p.Id, p.Title, p.Author, p.Description, p.Price
-                FROM Orders o
-                LEFT JOIN OrderDetails od ON o.Id = od.OrderId
-                LEFT JOIN Products p ON od.ProductId = p.Id";
-
-                await connection.QueryAsync<Order, OrderDetails, Product, Order>(sql, (order, orderDetail, product) =>
+                await connection.QueryAsync<Order, Address, OrderDetails, Order>(sql, (order, address, orderDetail) =>
                 {
                     if (!orderDictionary.TryGetValue(order.Id, out var currentOrder))
                     {
                         currentOrder = order;
+                        currentOrder.CustomerAddress = address;
                         currentOrder.Details = new List<OrderDetails>();
                         orderDictionary.Add(currentOrder.Id, currentOrder);
                     }
-
-                    if (orderDetail != null)
+            
+                    if (orderDetail is not null)
                     {
-                        orderDetail.Product = product;
                         currentOrder.Details.Add(orderDetail);
                     }
-
+            
                     return currentOrder;
-                });
-
+                }, transaction:transaction);
+            
                 return orderDictionary.Values;
+            }
+            catch 
+            {
+                _context.Rollback();
+                throw;
             }
         }
 
         public async Task<IEnumerable<Order>> GetByIds(IEnumerable<int> ids)
         {
-            using (IDbConnection connection = _context.CreateConnection())
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+
+            var orderDictionary = new Dictionary<int, Order>();
+            
+            var sql = @"
+            SELECT o.Id, o.CustomerName, o.PhoneNumber, o.Email, o.Date, o.Status, 
+                   a.Id, a.Street, a.City, a.State, a.ZipCode, a.Country, 
+                   od.Id, od.ProductTitle, od.ProductAuthor, od.ProductDescription, od.ProductPrice, od.ProductQuantity, od.ProductCategoryName
+            FROM Orders o
+            LEFT JOIN Addresses a ON o.CustomerAddressId = a.Id
+            LEFT JOIN OrderDetails od ON o.Id = od.OrderId
+            WHERE o.Id in @Ids";
+            
+            try
             {
-                var orderDictionary = new Dictionary<int, Order>();
-
-                var sql = @"
-                SELECT o.Id, o.CustomerName, o.CustomerAddress, o.PhoneNumber, o.Email, o.Date, od.Id, od.ProductQuantity, p.Id, p.Title, p.Author, p.Description, p.Price
-                FROM Orders o
-                LEFT JOIN OrderDetails od ON o.Id = od.OrderId
-                LEFT JOIN Products p ON od.ProductId = p.Id
-                WHERE o.Id in @Ids";
-
-                await connection.QueryAsync<Order, OrderDetails, Product, Order>(sql, (order, orderDetail, product) =>
+                await connection.QueryAsync<Order, Address, OrderDetails, Order>(sql, (order, address, orderDetail) =>
                 {
                     if (!orderDictionary.TryGetValue(order.Id, out var currentOrder))
                     {
                         currentOrder = order;
+                        currentOrder.CustomerAddress = address;
                         currentOrder.Details = new List<OrderDetails>();
                         orderDictionary.Add(currentOrder.Id, currentOrder);
                     }
-
+            
                     if (orderDetail is not null)
                     {
-                        orderDetail.Product = product;
                         currentOrder.Details.Add(orderDetail);
                     }
-
+            
                     return currentOrder;
-                }, new { Ids = ids.ToArray() });
-
+                }, new { Ids = ids }, transaction:transaction);
+            
                 return orderDictionary.Values;
             }
-        }
+            catch
+            {
+                _context.Rollback();
+                throw;
+            } 
+        }        
 
         public async Task Update(Order order)
         {
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+                
             var sqlOrder = @"
                 UPDATE Orders
-                SET CustomerName = @CustomerName, CustomerAddress = @CustomerAddress, PhoneNumber = @PhoneNumber, Email = @Email
-                WHERE Id = @Id";
-
+                SET CustomerName = @CustomerName, PhoneNumber = @PhoneNumber, Email = @Email
+                WHERE Id = @Id
+                SELECT CustomerAddressId FROM Orders WHERE Id = @Id";
+            
             var sqlOrderDetails = @"
                 UPDATE OrderDetails
-                SET ProductId = @ProductId, ProductQuantity = @ProductQuantity";
-
-            using (IDbConnection connection = _context.CreateConnection())
-            {               
-                await connection.QueryAsync(sqlOrder, order);
-
+                SET ProductTitle = @ProductTitle, ProductAuthor = @ProductAuthor, 
+                    ProductDescription = @ProductDescription, ProductPrice = @ProductPrice, ProductQuantity = @ProductQuantity, ProductCategoryName = @ProductCategoryName
+                WHERE OrderId = @Id";
+            
+            var sqlAddress = @"
+                UPDATE Addresses
+                SET Street = @Street, City = @City, State = @State, ZipCode = @ZipCode, Country = @Country
+                WHERE Id = @Id";
+            
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("Id", order.Id);
+                parameters.Add("CustomerName", order.CustomerName);
+                parameters.Add("PhoneNumber", order.PhoneNumber);
+                parameters.Add("Email", order.Email);
+            
+                var addressId = await connection.QuerySingleAsync<int>(sqlOrder, parameters, transaction: transaction);
+            
+                parameters.Add("Id", addressId);
+                parameters.Add("Street", order.CustomerAddress.Street);
+                parameters.Add("State", order.CustomerAddress.State);
+                parameters.Add("City", order.CustomerAddress.City);
+                parameters.Add("ZipCode", order.CustomerAddress.ZipCode);
+                parameters.Add("Country", order.CustomerAddress.Country);
+            
+                await connection.QueryAsync(sqlAddress, parameters, transaction: transaction);
+            
                 foreach (var orderDetail in order.Details)
                 {
-                    await connection.QueryAsync(sqlOrderDetails, new
-                    {
-                        ProductId = orderDetail.Product.Id,
-                        ProductQuantity = orderDetail.ProductQuantity
-                    });
+                    parameters.Add("Id", order.Id);
+                    parameters.Add("ProductTitle", orderDetail.ProductTitle);
+                    parameters.Add("ProductAuthor", orderDetail.ProductAuthor);
+                    parameters.Add("ProductDescription", orderDetail.ProductDescription);
+                    parameters.Add("ProductPrice", orderDetail.ProductPrice);
+                    parameters.Add("ProductQuantity", orderDetail.ProductQuantity);
+                    parameters.Add("ProductCategoryName", orderDetail.ProductCategoryName);
+            
+                    await connection.QueryAsync(sqlOrderDetails, parameters, transaction: transaction);
                 }
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
+            }
+        }
+        public async Task ChangeStatus(int id, OrderStatus status)
+        {
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+
+            var sql = @"UPDATE Orders SET Status = @Status WHERE Id = @Id";
+
+            try
+            {
+                await connection.QueryAsync(sql, new {Id = id, Status = status}, transaction: transaction);
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
             }
         }
     }
