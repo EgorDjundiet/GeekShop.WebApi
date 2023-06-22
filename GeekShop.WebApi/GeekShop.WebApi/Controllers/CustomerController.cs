@@ -9,10 +9,15 @@ namespace GeekShop.WebApi.Controllers
     [Route("[controller]")]
     public class CustomerController : ControllerBase
     {
-        readonly ICustomerService _customerService;
+        ICustomerService _customerService;
         public CustomerController(ICustomerService customerService)
         {
             _customerService = customerService;
+        }
+        [HttpGet("SeedData")]
+        public async Task SeedData()
+        {
+            await _customerService.SeedData();
         }
         [HttpGet("GetAll")]
         public async Task<IEnumerable<Customer>> GetAll()

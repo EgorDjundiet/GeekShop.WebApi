@@ -8,7 +8,6 @@ namespace GeekShop.Domain.ViewModels
         public string? Author { get; set; }
         public string? Description { get; set; }
         public decimal? Price { get; set; }
-        public int? CategoryId { get; set; }
     }
     public class SubmitProductInValidator : AbstractValidator<SubmitProductIn>
     {
@@ -23,9 +22,6 @@ namespace GeekShop.Domain.ViewModels
             RuleFor(product => product.Price)
                 .NotEmpty().WithMessage("Price is required")
                 .GreaterThan(0).WithMessage("Invalid price");
-
-            RuleFor(product => product.CategoryId)
-                .NotEmpty().WithMessage("Category id is required");
         }
     }
 }

@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace GeekShop.Domain.Exceptions
 {
-    public class ValidationException : Exception
+    public class GeekShopValidationException : GeekShopException
     {
-        public ValidationException(string message) : base(message)
+        public GeekShopValidationException(string message) : base(message)
         {
             
         }

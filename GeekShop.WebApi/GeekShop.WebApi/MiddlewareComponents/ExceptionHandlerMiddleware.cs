@@ -19,31 +19,24 @@ namespace GeekShop.WebApi.MiddlewareComponents
             {
                 await _next(context);
             }
-            catch (NotFoundException ex)
+            catch (GeekShopNotFoundException ex)
             {
                 context.Response.StatusCode = (int)HttpStatusCode.BadRequest;                               
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync(JsonConvert.SerializeObject(new { Message = ex.Message}));
             }
-            catch (ValidationException ex)
+            catch (GeekShopValidationException ex)
             {
                 context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync(JsonConvert.SerializeObject(new { Message = ex.Message }));
             }
-            catch(AlreadyUsedException ex)
+            catch(GeekShopDatabaseException ex)
             {
-                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync(JsonConvert.SerializeObject(new { Message = ex.Message }));
             }
-            //Uncomment in Release
-            //catch
-            //{
-            //    context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-            //    context.Response.ContentType = "application/json";
-            //    await context.Response.WriteAsync(JsonConvert.SerializeObject(new { Message = "Something went wrong"}));
-            //}
         }
     }
 }

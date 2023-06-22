@@ -15,6 +15,11 @@ namespace GeekShop.WebApi.Controllers
             _orderService = orderService;
         }
 
+        [HttpGet("SeedData")]
+        public async Task SeedData()
+        {
+            await _orderService.SeedData();
+        }
         [HttpGet("GetAll")]
         public async Task<IEnumerable<Order>> GetAll()
         {
