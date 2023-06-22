@@ -2,12 +2,12 @@
 {
     public enum OrderStatus
     {
-        None = 0,
-        Placed = 1,
-        PendingPayment = 2,
-        Paid = 3,
-        Shipped = 4,
-        Completed = 5
+        None,
+        Placed,
+        PendingPayment,
+        Paid,
+        Shipped,
+        Completed
     }
     public class Order
     {

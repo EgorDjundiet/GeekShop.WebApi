@@ -1,5 +1,4 @@
 ﻿using GeekShop.Domain;
-using System.Data;
 using Dapper;
 using GeekShop.Repositories.Contexts;
 using GeekShop.Repositories.Contracts;
@@ -14,153 +13,143 @@ namespace GeekShop.Repositories
         {
             _context = context; 
         }
-        public async Task<Product> Add(Product product)
+        public async Task<int> Add(Product product)
         {
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+                
             var query = @"
                 INSERT INTO Products
-                (Title, Author, Description, Price)
+                (Title, Author, Description, Price, CategoryName)
                 VALUES 
-                (@Title, @Author, @Description, @Price)
+                (@Title, @Author, @Description, @Price, @CategoryName)
                 SELECT SCOPE_IDENTITY();";
-
-            using (IDbConnection connection = _context.CreateConnection())
+            try
             {
-                try
+                product.Id = await connection.QuerySingleAsync<int>(query, new
                 {
-                    product.Id = await connection.QuerySingleAsync<int>(query, new
-                    {
-                        Title = product.Title,
-                        Author = product.Author,
-                        Description = product.Description,
-                        Price = product.Price
-                    });
-                    return (await Get(product.Id))!;
-                }
-                catch 
-                {
-                    throw new GeekShopDatabaseException("Problems with database");
-                }
-                
+                    Title = product.Title,
+                    Author = product.Author,
+                    Description = product.Description,
+                    Price = product.Price,
+                    CategoryName = product.CategoryName
+                }, transaction: transaction);
+                return product.Id;
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
             }
         }
 
         public async Task Delete(int id)
         {
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+
             var query = @"
                 DELETE FROM Products
                 WHERE Id = @Id";
-
-            using (IDbConnection connection = _context.CreateConnection())
+            try
             {
-                try
-                {
-                    await connection.QueryAsync(query, new { Id = id});
-                }
-                catch
-                {
-                    throw new GeekShopDatabaseException("Problems with database");
-                }
+                await connection.QueryAsync(query, new { Id = id }, transaction: transaction);
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
             }
         }
 
         public async Task<Product?> Get(int id)
         {
             var query = @"
-                SELECT 
-                Id, 
-                Title,
-                Author,
-                Description,
-                Price
+                SELECT Id, Title, Author, Description, Price, CategoryName
                 FROM Products
                 WHERE Id = @Id";
 
-            using (IDbConnection connection = _context.CreateConnection())
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+            
+            try
             {
-                try
-                {
-                    return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id });
-                }
-                catch 
-                {
-                    throw new GeekShopDatabaseException("Problems with database");
-                }               
+                return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id }, transaction:transaction);
+            }
+            catch 
+            {
+                _context.Rollback();
+                throw;
             }
         }
 
         public async Task<IEnumerable<Product>> GetByIds(IEnumerable<int> ids)
         {
             var query = @"
-                SELECT 
-                Id,
-                Title,
-                Author,
-                Description,
-                Price
+                SELECT Id, Title, Author, Description, Price, CategoryName
                 FROM Products
                 WHERE Id IN @Ids";
     
-            using (IDbConnection connection = _context.CreateConnection())
-            {
-                try
-                {
-                    return await connection.QueryAsync<Product>(query, new { Ids = ids.ToArray() });
-                }
-                catch
-                {
-                    throw new GeekShopDatabaseException("Problems with database");
-                }
-            }
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
 
+            try
+            {
+                return await connection.QueryAsync<Product>(query, new { Ids = ids.ToArray() }, transaction:transaction);
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
+            }
         }
+
         public async Task Update(Product product)
         {
             var query = @"
                 UPDATE Products
-                SET Title = @Title, Author = @Author, Description = @Description, Price = @Price
+                SET Title = @Title, Author = @Author, Description = @Description, Price = @Price, CategoryName = @CategoryName
                 WHERE Id = @Id";
 
-            using (IDbConnection connection = _context.CreateConnection())
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+                    
+            try
             {
-                try
+                await connection.QueryAsync(query, new
                 {
-                    await connection.QueryAsync(query, new
-                    {
-                        Id = product.Id,
-                        Title = product.Title,
-                        Author = product.Author,
-                        Description = product.Description,
-                        Price = product.Price
-                    });
-                }
-                catch
-                {
-                    throw new GeekShopDatabaseException("Problems with database");
-                }        
+                    Id = product.Id,
+                    Title = product.Title,
+                    Author = product.Author,
+                    Description = product.Description,
+                    Price = product.Price,
+                    CategoryName = product.CategoryName
+                }, transaction:transaction);
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
             }
         }
 
         public async Task<IEnumerable<Product>> GetAll()
         {
             var query = @"
-                SELECT 
-                Id,
-                Title,
-                Author,
-                Description,
-                Price
+                SELECT Id, Title, Author, Description, Price, CategoryName
                 FROM Products";
 
-            using (IDbConnection connection = _context.CreateConnection())
+            var connection = _context.GetConnection();
+            var transaction = _context.GetTransaction();
+
+            try
             {
-                try
-                {
-                    return await connection.QueryAsync<Product>(query);
-                }
-                catch
-                {
-                    throw new GeekShopDatabaseException("Problems with database");
-                }
+                return await connection.QueryAsync<Product>(query,transaction:transaction);
+            }
+            catch
+            {
+                _context.Rollback();
+                throw;
             }
         }        
     }
